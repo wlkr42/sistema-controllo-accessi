@@ -1,0 +1,43 @@
+[Unit]
+Description=CRT-285 Card Reader Service (Robust)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=plugdev
+WorkingDirectory=/opt/access_control
+
+# Environment
+Environment="PATH=/opt/access_control/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONPATH=/opt/access_control"
+
+# Comando principale
+ExecStart=/opt/access_control/venv/bin/python /opt/access_control/src/hardware/crt285_robust.py
+
+# Restart sempre, anche in caso di crash
+Restart=always
+RestartSec=5
+StartLimitInterval=0
+
+# Kill solo con SIGTERM
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Log
+StandardOutput=journal
+StandardError=journal
+
+# Permessi dispositivi USB
+PrivateDevices=no
+DeviceAllow=/dev/bus/usb rw
+DevicePolicy=auto
+
+# Capabilities per USB
+AmbientCapabilities=CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_SYS_ADMIN
+
+[Install]
+WantedBy=multi-user.target
