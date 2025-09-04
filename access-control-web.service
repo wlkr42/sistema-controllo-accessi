@@ -1,29 +1,26 @@
 [Unit]
 Description=Access Control Web API Service
 After=network.target
+Wants=network-online.target
 
 [Service]
 Type=simple
-User=wlkr42
-Group=plugdev
+# Gira come root per avere tutti i permessi USB/hardware
+User=root
+Group=root
 WorkingDirectory=/opt/access_control
 Environment="PATH=/opt/access_control/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Environment="PYTHONPATH=/opt/access_control/src"
 
-# Comando per avviare il servizio
-ExecStartPre=/opt/access_control/venv/bin/python /opt/access_control/src/hardware/crt285_wrapper.py
+# Comando per avviare il servizio - SOLO web_api, tutto il resto è integrato
 ExecStart=/opt/access_control/venv/bin/python /opt/access_control/src/api/web_api.py
 
-# Permessi supplementari per accesso USB
-SupplementaryGroups=dialout plugdev
+# Con User=root non servono permessi extra, ha già tutto
 PrivateDevices=no
-DeviceAllow=/dev/bus/usb rw
-DeviceAllow=/dev/ttyACM0 rw
-DeviceAllow=/dev/ttyUSB0 rw
 
-# Capacità per accesso diretto USB
-AmbientCapabilities=CAP_SYS_ADMIN
-CapabilityBoundingSet=CAP_SYS_ADMIN
+# Restart automatico in caso di crash
+StartLimitInterval=0
+StartLimitBurst=10
 
 Restart=always
 RestartSec=10
