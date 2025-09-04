@@ -1,0 +1,356 @@
+/* File: /opt/access_control/src/api/static/api/static/css/dashboard.css */
+/* Stili per Dashboard Sistema Controllo Accessi */
+
+/* ===== STILI BASE ===== */
+body { 
+    background-color: #f8f9fa; 
+}
+
+.navbar { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+}
+
+/* ===== CARDS ===== */
+.stat-card { 
+    border: none; 
+    border-radius: 15px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    transition: transform 0.2s; 
+}
+
+.stat-card:hover { 
+    transform: translateY(-5px); 
+}
+
+.stat-number { 
+    font-size: 2.5rem; 
+    font-weight: bold; 
+}
+
+.hardware-card { 
+    border-radius: 15px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+}
+
+/* ===== MODAL USB-RLY08 ===== */
+.relay-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.relay-box {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.relay-box.active {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
+}
+
+.relay-box i {
+    font-size: 2em;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.relay-box.active i {
+    animation: pulse 0.5s ease-in-out infinite;
+}
+
+/* ===== VISUALIZZAZIONE CANCELLO ===== */
+.gate-visual {
+    width: 200px;
+    height: 100px;
+    background: #343a40;
+    border: 3px solid #6c757d;
+    border-radius: 5px;
+    margin: 20px auto;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.5s ease;
+}
+
+.gate-visual.open {
+    background: #28a745;
+    border-color: #28a745;
+}
+
+.gate-bars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        90deg,
+        #ffc107,
+        #ffc107 10px,
+        #343a40 10px,
+        #343a40 20px
+    );
+    transition: transform 0.8s ease;
+}
+
+.gate-visual.open .gate-bars {
+    transform: translateX(-100%);
+}
+
+.gate-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    z-index: 10;
+}
+
+/* ===== LED INDICATORS ===== */
+.led-indicator {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin: 10px;
+    display: inline-block;
+    border: 2px solid #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.led-indicator.led-red { background: #ffcccc; }
+.led-indicator.led-green { background: #ccffcc; }
+.led-indicator.led-yellow { background: #ffffcc; }
+
+.led-indicator.active {
+    border-width: 0;
+    box-shadow: 0 0 30px currentColor;
+}
+
+.led-indicator.led-red.active { background: #dc3545; }
+.led-indicator.led-green.active { background: #28a745; }
+.led-indicator.led-yellow.active { background: #ffc107; }
+
+.led-indicator.blink {
+    animation: blink 0.5s ease-in-out infinite;
+}
+
+/* ===== BUZZER ===== */
+.buzzer-visual {
+    display: inline-block;
+    font-size: 2em;
+    transition: all 0.3s ease;
+}
+
+.buzzer-visual.active {
+    animation: buzz 0.2s ease-in-out infinite;
+    color: #17a2b8;
+}
+
+/* ===== LOG AREAS ===== */
+.relay-log {
+    background: #000;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    padding: 15px;
+    height: 200px;
+    overflow-y: auto;
+    border-radius: 8px;
+    font-size: 0.9em;
+}
+
+.integrated-log {
+    background: #000;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    padding: 15px;
+    height: 400px;
+    overflow-y: auto;
+    border-radius: 8px;
+    font-size: 0.9em;
+}
+
+.integrated-log .log-line {
+    margin-bottom: 5px;
+    padding: 2px 0;
+}
+
+/* ===== TEST INTEGRATO ===== */
+.access-simulation {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 30px;
+    min-height: 400px;
+}
+
+.card-reader-container {
+    position: relative;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 50px;
+}
+
+.card-animation {
+    width: 120px;
+    height: 80px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 10px;
+    position: relative;
+    transition: all 0.5s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.card-animation.waiting {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.card-animation.inserting {
+    transform: translateX(50px);
+}
+
+.card-animation.success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.card-animation.denied {
+    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    animation: shake 0.5s ease-in-out;
+}
+
+.card-chip {
+    width: 25px;
+    height: 20px;
+    background: gold;
+    border-radius: 4px;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+}
+
+.card-text {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    text-align: center;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* ===== READER VISUAL ===== */
+.reader-visual {
+    width: 150px;
+    height: 100px;
+    background: #343a40;
+    border-radius: 10px;
+    position: relative;
+    border: 3px solid #495057;
+}
+
+.reader-visual.scanning .reader-light {
+    background: #ffc107;
+    animation: blink 0.5s ease-in-out infinite;
+}
+
+.reader-visual.active .reader-light {
+    background: #17a2b8;
+}
+
+.reader-visual.success .reader-light {
+    background: #28a745;
+}
+
+.reader-visual.denied .reader-light {
+    background: #dc3545;
+}
+
+.reader-slot {
+    width: 100px;
+    height: 5px;
+    background: #000;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.reader-light {
+    width: 15px;
+    height: 15px;
+    background: #6c757d;
+    border-radius: 50%;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    transition: all 0.3s ease;
+}
+
+.devices-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.animated-text {
+    animation: pulse-text 1.5s ease-in-out infinite;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+/* ===== ANIMAZIONI ===== */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+@keyframes buzz {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+@keyframes pulse-text {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .relay-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .card-reader-container {
+        flex-direction: column;
+        gap: 20px;
+    }
+}

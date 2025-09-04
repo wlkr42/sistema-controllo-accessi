@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gestione Utenti Sistema - Controllo Accessi</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/dashboard.css" rel="stylesheet">
+    <link href="/static/css/user-menu.css" rel="stylesheet">
+    <link href="/static/css/clock.css" rel="stylesheet">
+    <style>
+        .navbar { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .role-badge {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+        }
+        .role-admin { 
+            background: #4a5568; 
+            color: white; 
+        }
+        .role-manager { 
+            background: #4c51bf; 
+            color: white; 
+        }
+        .role-viewer { 
+            background: #2b6cb0; 
+            color: white; 
+        }
+        .table th { 
+            background: #f8f9fa; 
+        }
+        .btn-success {
+            background-color: #2c7a7b;
+            border-color: #2c7a7b;
+        }
+        .btn-success:hover {
+            background-color: #285e61;
+            border-color: #285e61;
+        }
+        .btn-outline-danger {
+            color: #63171b;
+            border-color: #63171b;
+        }
+        .btn-outline-danger:hover {
+            background-color: #63171b;
+            border-color: #63171b;
+        }
+        .btn-outline-success {
+            color: #2c7a7b;
+            border-color: #2c7a7b;
+        }
+        .btn-outline-success:hover {
+            background-color: #2c7a7b;
+            border-color: #2c7a7b;
+        }
+        .btn-outline-primary {
+            color: #4c51bf;
+            border-color: #4c51bf;
+        }
+        .btn-outline-primary:hover {
+            background-color: #4c51bf;
+            border-color: #4c51bf;
+        }
+        .modal-header.bg-success {
+            background-color: #2c7a7b !important;
+        }
+        .badge.bg-success {
+            background-color: #2c7a7b !important;
+        }
+        .badge.bg-danger {
+            background-color: #63171b !important;
+        }
+        .text-danger {
+            color: #63171b !important;
+        }
+        .text-primary {
+            color: #4c51bf !important;
+        }
+        .text-success {
+            color: #2c7a7b !important;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-users-cog me-2"></i>Gestione Utenti Sistema
+            </span>
+            <div class="d-flex align-items-center gap-3">
+                <a href="/" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left"></i> Dashboard
+                </a>
+                <div id="user-menu-placeholder"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Statistiche -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-crown fa-2x text-danger mb-3"></i>
+                        <h3 class="text-danger" id="admin-count">-</h3>
+                        <h6 class="text-muted">Amministratori</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-user-tie fa-2x text-primary mb-3"></i>
+                        <h3 class="text-primary" id="manager-count">-</h3>
+                        <h6 class="text-muted">Gestori</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-eye fa-2x text-success mb-3"></i>
+                        <h3 class="text-success" id="viewer-count">-</h3>
+                        <h6 class="text-muted">Visualizzatori</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-2x text-info mb-3"></i>
+                        <h3 class="text-info" id="total-count">-</h3>
+                        <h6 class="text-muted">Totale Utenti</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Lista Utenti -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>Lista Utenti
+                        </h5>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="refreshUsers()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="exportUsers()">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Ruolo</th>
+                                        <th>Creato Da</th>
+                                        <th>Ultimo Accesso</th>
+                                        <th>Stato</th>
+                                        <th class="text-end">Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Caricamento...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Nuovo Utente -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user-plus me-2"></i>Nuovo Utente
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="create-user-form">
+                            <div class="mb-3">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" id="new-username" 
+                                       required minlength="3" pattern="[a-zA-Z0-9_]+"
+                                       placeholder="es. mario_rossi">
+                                <div class="form-text">Solo lettere, numeri e underscore</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-control" id="new-password" 
+                                       required minlength="8"
+                                       placeholder="Password sicura">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Ruolo</label>
+                                <select class="form-select" id="new-role">
+                                    <option value="admin">👑 Amministratore</option>
+                                    <option value="user_manager">👔 Gestore Utenti</option>
+                                    <option value="viewer" selected>👁️ Visualizzatore</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-plus-circle me-2"></i>Crea Utente
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Attività Recenti -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history me-2"></i>Attività Recenti
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="recent-activities" class="list-group list-group-flush">
+                            <div class="list-group-item text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Caricamento...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Password -->
+    <div class="modal fade" id="tempPasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-key me-2"></i>Password Temporanea
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Copia questa password temporanea e comunicala all'utente.
+                        <br>Non sarà più visibile dopo la chiusura!
+                    </div>
+                    <h5>Username: <span id="temp-username" class="text-primary"></span></h5>
+                    <div class="d-flex justify-content-center align-items-center gap-2 my-3">
+                        <code id="temp-password" class="h4 mb-0"></code>
+                        <button class="btn btn-sm btn-outline-primary" onclick="copyTempPassword()">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/user-menu.js"></script>
+    <script src="/static/js/clock.js"></script>
+    <script src="/static/js/users.js"></script>
+    <script src="/static/js/recent-activities.js"></script>
+    <script>
+        // Carica menu utente
+        fetch('/api/user-menu-html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('user-menu-placeholder').innerHTML = html;
+                new UserMenu();
+            });
+    </script>
+</body>
+</html>

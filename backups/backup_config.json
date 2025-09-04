@@ -1,0 +1,31 @@
+{
+  "auto_backup": {
+    "enabled": true,
+    "daily": {
+      "enabled": true,
+      "time": "02:00"
+    },
+    "weekly": {
+      "enabled": true,
+      "day": 0,
+      "time": "03:00"
+    },
+    "monthly": {
+      "enabled": false,
+      "day": 1,
+      "time": "03:00"
+    }
+  },
+  "retention": {
+    "daily_keep": 7,
+    "weekly_keep": 4,
+    "monthly_keep": 6,
+    "max_size_gb": 10
+  },
+  "notifications": {
+    "email_enabled": false,
+    "email_to": "",
+    "on_error": true,
+    "on_success": false
+  }
+}

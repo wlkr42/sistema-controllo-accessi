@@ -1,0 +1,40 @@
+# CLINE CONFIGURATION FOR ACCESS_CONTROL
+
+## AUTO-READ FILES (Always load these first)
+.continue/project_memory.json
+.continue/PROJECT_RULES.md
+.continue/database_schema.json
+
+## PROJECT CONTEXT
+Project: Sistema Controllo Accessi
+Type: Flask Modular Application with Blueprints
+Database: SQLite (src/access.db)
+Main folders: src/, config/, tests/, scripts/
+
+## CRITICAL RULES (TASSATIVE)
+1. ALWAYS read memory files before any task
+2. ALWAYS work step by step (passo passo)
+3. ONLY modify what is explicitly requested
+4. MAINTAIN existing code style and patterns
+5. MOVE obsolete files to da_buttare/ with detailed log
+6. ALWAYS respond in Italian
+7. ALWAYS indicate complete file paths
+8. RESPECT Flask Blueprint modular structure
+
+## DATABASE RULES
+- Login admin: use ONLY 'utenti_sistema' table
+- Physical access: use ONLY 'utenti_autorizzati' table
+- Never mix the two authentication systems
+
+## BEFORE EACH TASK
+Read in this order:
+1. .continue/project_memory.json (complete project structure)
+2. .continue/PROJECT_RULES.md (development rules)
+3. .continue/database_schema.json (DB structure)
+
+## WORKFLOW
+1. Analyze task request
+2. Check memory files
+3. Propose step-by-step solution
+4. Implement ONLY requested changes
+5. Update memory files after completion

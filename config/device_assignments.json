@@ -1,0 +1,14 @@
+{
+  "assignments": {
+    "card_reader": {
+      "device_key": "usb:23d8:0285",
+      "device_name": "CREATOR(CHINA)TECH CO.,LTD CRT-285 (23d8:0285)",
+      "device_path": "/dev/ttyACM0"
+    },
+    "relay_controller": {
+      "device_key": "usb:04d8:ffee",
+      "device_name": "Microchip Technology, Inc. Devantech USB-ISS (04d8:ffee)",
+      "device_path": "/dev/ttyACM0"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+# File: /opt/access_control/config/base.yml
+# Configurazione base del sistema
+
+environment: "production"
+terminal_id: "TERM-001"
+version: "1.0.0"
+debug_mode: false
+
+hardware:
+  arduino_port: "/dev/ttyACM0"
+  arduino_baudrate: 9600
+  relay_port: "/dev/ttyUSB0"
+  relay_baudrate: 19200
+  card_reader_timeout: 10
+  gate_open_duration: 5
+
+database:
+  path: "/opt/access_control/src/access.db"
+  backup_interval: 86400  # 24 ore
+  max_backups: 30
+  vacuum_interval: 604800  # 7 giorni
+
+server:
+  url: "https://server-centrale.example.com/api"
+  username: "terminal_001"
+  password: "changeme"
+  sync_interval: 3600  # 1 ora
+  timeout: 30
+  retry_attempts: 3
+  ssl_verify: true
+
+security:
+  encrypt_database: true
+  max_failed_attempts: 5
+  lockout_duration: 300  # 5 minuti
+  session_timeout: 1800  # 30 minuti
+  audit_log: true
+
+logging:
+  level: "INFO"
+  max_size: "10MB"
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  console_output: true
+
+web:
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+  secret_key: "changeme-in-production"
+  admin_user: "admin"
+  admin_password: "changeme"
+

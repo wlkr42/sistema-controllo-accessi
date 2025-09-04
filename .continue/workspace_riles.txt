@@ -1,0 +1,6 @@
+access_control specific:
+- Database: src/access.db
+- Admin login: utenti_sistema table only
+- Physical access: utenti_autorizzati table only
+- Maintain Flask Blueprint structure
+- Move old files to da_buttare/ with log

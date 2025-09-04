@@ -1,0 +1,6 @@
+Before any task in access_control project:
+1. Load .continue/project_memory.json
+2. Load .continue/PROJECT_RULES.md
+3. Follow all project rules
+4. Respond in Italian
+5. Work step by step only on requested files

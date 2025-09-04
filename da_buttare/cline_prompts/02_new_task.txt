@@ -1,0 +1,11 @@
+Basandoti sulla memoria del progetto in .continue/:
+
+NUOVO TASK: [descrizione dettagliata]
+
+Prima di procedere conferma:
+1. Hai letto la memoria del progetto? ✓
+2. Conosci le regole tassative? ✓
+3. Procederai passo passo? ✓
+4. Modificherai solo il richiesto? ✓
+
+Proponi soluzione step-by-step.

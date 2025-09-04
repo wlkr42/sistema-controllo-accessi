@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "name": "access_control",
+    "type": "Flask Modular Application",
+    "path": "/opt/access_control",
+    "created": "2025-07-20T11:11:57.607992",
+    "last_updated": "2025-07-20T11:11:57.608013",
+    "cline_configured": true
+  },
+  "project_architecture": {
+    "type": "Flask with Blueprints",
+    "main_entry": "src/main.py",
+    "api_entry": "src/api/web_api.py",
+    "blueprints": [],
+    "modular_structure": {
+      "src/api/": "Flask API and web interface",
+      "src/hardware/": "Hardware controllers (card reader, relay)",
+      "src/database/": "Database management layer",
+      "src/external/": "External integrations (Odoo)",
+      "src/core/": "Core configurations",
+      "src/utils/": "Utility functions"
+    }
+  },
+  "strict_rules": {
+    "work_methodology": "SEMPRE passo passo, un task alla volta",
+    "code_integration": "Modificare SOLO quello richiesto",
+    "style_consistency": "Mantenere stile coerente",
+    "file_management": "File obsoleti in da_buttare/ con log",
+    "response_language": "SEMPRE in italiano",
+    "testing": "Test prima di integrare"
+  },
+  "database_info": {
+    "path": "src/access.db",
+    "tables": {
+      "utenti_sistema": "Admin users (dashboard login)",
+      "utenti_autorizzati": "Authorized users (card access)",
+      "log_accessi": "Access logs",
+      "dispositivi": "Hardware devices",
+      "email_log": "Email logs",
+      "allerte_sistema": "System alerts"
+    }
+  },
+  "api_endpoints": {},
+  "frontend_structure": {},
+  "cleanup_history": [],
+  "update_history": []
+}

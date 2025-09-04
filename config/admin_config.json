@@ -1,0 +1,150 @@
+{
+  "island_info": {
+    "name": "Isola Ecologica RAEE",
+    "location": "Rende (CS)",
+    "comune": "Rende",
+    "coordinates": {
+      "lat": 39.3337,
+      "lng": 16.1875
+    },
+    "operating_hours": {
+      "start": "08:00",
+      "end": "18:00",
+      "days": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+      ]
+    }
+  },
+  "network": {
+    "ethernet": {
+      "enabled": true,
+      "dhcp": true,
+      "static_ip": "",
+      "gateway": "",
+      "dns": [
+        "8.8.8.8",
+        "8.8.4.4"
+      ]
+    },
+    "wifi": {
+      "enabled": false,
+      "ssid": "",
+      "password": "",
+      "hidden": false
+    },
+    "monitoring": {
+      "ping_targets": [
+        "8.8.8.8",
+        "app.calabramaceri.it"
+      ],
+      "check_interval": 300
+    }
+  },
+  "email": {
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "username": "isola@comune.rende.cs.it",
+    "password": "",
+    "sender_name": "Sistema Controllo Accessi Rende",
+    "recipients": {
+      "admin": [
+        "ambiente@comune.rende.cs.it"
+      ],
+      "alerts": [
+        "tecnico@comune.rende.cs.it"
+      ],
+      "reports": [
+        "sindaco@comune.rende.cs.it",
+        "ambiente@comune.rende.cs.it"
+      ]
+    },
+    "auto_reports": {
+      "enabled": true,
+      "frequency": "monthly",
+      "day_of_month": 1,
+      "time": "09:00"
+    }
+  },
+  "hardware": {
+    "usb_ports": {
+      "card_reader": "/dev/ttyACM0",
+      "relay_controller": "/dev/ttyUSB0",
+      "arduino": "/dev/ttyACM1"
+    },
+    "relay_mapping": {
+      "1": {
+        "name": "Cancello Principale",
+        "type": "gate"
+      },
+      "2": {
+        "name": "Illuminazione",
+        "type": "light"
+      },
+      "3": {
+        "name": "Allarme",
+        "type": "alarm"
+      },
+      "4": {
+        "name": "Blocco Magnetico",
+        "type": "lock"
+      },
+      "5": {
+        "name": "Ventilazione",
+        "type": "fan"
+      },
+      "6": {
+        "name": "Riserva",
+        "type": "spare"
+      }
+    },
+    "gate_timing": {
+      "open_duration": 8,
+      "warning_time": 2,
+      "max_open_time": 30
+    }
+  },
+  "service": {
+    "auto_start": true,
+    "service_name": "access-control-rende",
+    "restart_policy": "always",
+    "log_rotation": {
+      "enabled": true,
+      "max_size": "10MB",
+      "keep_files": 30
+    },
+    "backup": {
+      "enabled": true,
+      "interval": "daily",
+      "keep_backups": 30,
+      "backup_path": "/opt/access_control/backups"
+    }
+  },
+  "admin_users": {
+    "admin": {
+      "password_hash": "scrypt:32768:8:1$wyDTHXxJbLl5TkFM$4a26038ad98be0cc6220d0fdabd9f4fc217046d0b91ce93b22777ebe0f75a2fdefa83853e6e8572658cba2e997eb0ab066308825e85dfbb99f085e5b92ca6240",
+      "role": "admin",
+      "email": "admin@comune.rende.cs.it",
+      "created": "2025-07-08T22:43:34.306665",
+      "last_login": null
+    },
+    "gestore": {
+      "password_hash": "scrypt:32768:8:1$sFH7rhVzHDozyUwB$bfc0daaa179400c9685eefda7cfb0e592779035b84724af4ff9877b4c8b656a2b04c86828244eb5dd740a9b62fc773fc7fffa10b36990e3fc39532d616864078",
+      "role": "user_manager",
+      "email": "gestore@comune.rende.cs.it",
+      "created": "2025-07-08T22:43:34.411679",
+      "last_login": null
+    },
+    "monitor": {
+      "password_hash": "scrypt:32768:8:1$qLK91MIJyKWkJyQD$dc36f9561151fff267f65b9c52f630572718c902fdb57676968a9f9920bcd310ddef5a9bd231f9554529dfc5cd86e42bafc1df37969d23372024d0aff4e11195",
+      "role": "readonly",
+      "email": "monitor@comune.rende.cs.it",
+      "created": "2025-07-08T22:43:34.515964",
+      "last_login": null
+    }
+  }
+}

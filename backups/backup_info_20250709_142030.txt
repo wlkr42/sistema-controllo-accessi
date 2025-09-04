@@ -1,0 +1,17 @@
+=== BACKUP RAPIDO INFO ===
+Data: Wed Jul  9 02:20:30 PM UTC 2025
+Host: cancello-np-r-zi
+Utente: root
+
+File backuppati:
+- Database: access_20250709_142030.db
+- Config: config_20250709_142030.tar.gz
+- Src modificati: src_modified_20250709_142030.tar.gz
+
+Spazio utilizzato:
+4.2M	/opt/access_control/backups/access_20250709_142030.db
+0	/opt/access_control/backups/backup_info_20250709_142030.txt
+4.0K	/opt/access_control/backups/config_20250709_142030.tar.gz
+
+Processi attivi:
+access-+   55806  1.6  0.6 423452 55252 ?        Ss   09:55   4:16 /opt/access_control/venv/bin/python -m src.main

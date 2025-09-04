@@ -1,0 +1,56 @@
+{
+  "sistema": {
+    "nome_isola": "",
+    "comune": "Rende",
+    "version": "2.0.0",
+    "install_date": "2025-07-08T23:21:26.219375",
+    "dashboard_type": "modular"
+  },
+  "dispositivi": {
+    "lettore_cf": {
+      "tipo": "HID Omnikey 5427CK",
+      "porta": "/dev/ttyACM0",
+      "timeout": 30,
+      "retry_tentativi": 3
+    },
+    "rele": {
+      "porta": "/dev/ttyUSB0",
+      "baud_rate": 19200,
+      "modulo_id": 8,
+      "mapping": {
+        "1": {
+          "nome": "Cancello",
+          "durata_sec": 8
+        },
+        "2": {
+          "nome": "Luce Verde",
+          "durata_sec": 3
+        },
+        "3": {
+          "nome": "Luce Rossa",
+          "durata_sec": 3
+        },
+        "4": {
+          "nome": "Buzzer",
+          "durata_sec": 1
+        },
+        "5": {
+          "nome": "Illuminazione",
+          "durata_sec": 10
+        },
+        "6": {
+          "nome": "Riserva",
+          "durata_sec": 5
+        }
+      }
+    }
+  },
+  "utenti": {
+    "admin": {
+      "password_hash": "scrypt:32768:8:1$w8zeCkGw9rbpAeJd$060eee786d6484b2443ccbad4257396839338fd5717b9a66a38f2cbbc94f2fe8ce8ae820b6f7d21913af1647036527fd161e2b4cc4b13c0a61760c07e91dbffc",
+      "ruolo": "admin",
+      "ultimo_accesso": null,
+      "attivo": true
+    }
+  }
+}

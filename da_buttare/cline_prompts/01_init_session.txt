@@ -1,0 +1,6 @@
+Prima di iniziare, leggi questi file:
+1. .continue/project_memory.json
+2. .continue/PROJECT_RULES.md
+3. .continue/database_schema.json
+
+Conferma di aver caricato la memoria completa del progetto access_control e di conoscere le regole.

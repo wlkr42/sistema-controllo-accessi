@@ -1,0 +1,159 @@
+/* Navbar */
+.navbar { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.navbar .btn-outline-light {
+    border-width: 2px;
+    font-weight: 500;
+    padding: 0.375rem 1rem;
+}
+
+.navbar .btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Layout orari */
+.day-row {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.day-row:last-child {
+    border-bottom: none;
+}
+
+.day-name {
+    width: 120px;
+    font-weight: bold;
+}
+
+.time-slots {
+    display: flex;
+    gap: 2rem;
+}
+
+.time-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.time-label {
+    font-weight: 500;
+    width: 80px;
+}
+
+.time-select {
+    width: 100px;
+}
+
+.time-separator {
+    margin: 0 0.5rem;
+}
+
+.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Cards */
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Form elements */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Table */
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Buttons */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.btn-primary {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.btn-primary:hover {
+    background-color: #5a6fd6;
+    border-color: #5a6fd6;
+}
+
+.btn-success {
+    background-color: #48bb78;
+    border-color: #48bb78;
+}
+
+.btn-success:hover {
+    background-color: #38a169;
+    border-color: #38a169;
+}
+
+/* Alerts */
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    min-width: 300px;
+    max-width: 500px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Search field */
+#cercaCF {
+    max-width: 300px;
+}
+
+/* Table responsive */
+.table-responsive {
+    margin-top: 1rem;
+    border-radius: 0.25rem;
+    border: 1px solid #dee2e6;
+}
+
+/* Icons */
+.fas {
+    width: 1.25em;
+    text-align: center;
+}

@@ -1,0 +1,292 @@
+/opt/access_control
+├── access_controll_src.zip
+├── analyze_database.py
+├── backups
+│   ├── access_20250709_142030.db
+│   ├── access_20250719_140458.db
+│   ├── backup_completo_20250709_142008.tar.gz
+│   ├── backup_completo_20250709_142008.tar.tar.gz.md5
+│   ├── backup_completo_20250719_135043.tar.gz
+│   ├── backup_completo_20250719_135043.tar.tar.gz.md5
+│   ├── backup_completo_20250719_140513.tar.gz
+│   ├── backup_completo_20250719_140513.tar.tar.gz.md5
+│   ├── backup_completo_20250719_151332.tar.gz
+│   ├── backup_completo_20250719_152951.tar.gz
+│   ├── backup_completo_20250720_091930.tar.gz
+│   ├── backup_completo_20250720_091930.tar.tar.gz.md5
+│   ├── backup_completo_20250720_133016.tar.gz
+│   ├── backup_completo_20250720_133016.tar.tar.gz.md5
+│   ├── backup_completo_20250721_001458.tar.gz
+│   ├── backup_completo_20250721_001458.tar.tar.gz.md5
+│   ├── backup_completo_20250721_003610.tar.gz
+│   ├── backup_completo_20250721_003610.tar.tar.gz.md5
+│   ├── backup_completo_20250721_064826.tar.gz
+│   ├── backup_completo_20250721_064826.tar.tar.gz.md5
+│   ├── backup_completo_20250724_172107.tar.gz
+│   ├── backup_completo_20250724_172107.tar.tar.gz.md5
+│   ├── backup_config.json
+│   ├── backup_info_20250709_142030.txt
+│   ├── config_20250709_142030.tar.gz
+│   ├── latest_database.db -> access_20250719_140458.db
+│   ├── restore_backup_completo_20250709_142008.tar.gz.sh
+│   └── restore_backup_completo_20250719_135043.tar.gz.sh
+├── cf_sync.txt
+├── CLINE_GUIDA_RAPIDA.md
+├── cline_prompts
+│   ├── 01_init_session.txt
+│   ├── 02_new_task.txt
+│   └── 03_update_memory.txt
+├── clinerules-bank
+│   ├── features
+│   └── tasks
+│       ├── nuova-pagina.md
+│       └── nuovo-modulo.md
+├── cline_test_report_20250720_122704.json
+├── config
+│   ├── admin_config.json
+│   ├── base.yml
+│   ├── dashboard_config.json
+│   ├── device_assignments.json
+│   ├── environments
+│   └── templates
+├── da_buttare
+│   └── odoo_partner_connector.py.backup_20250725_070801
+├── data
+│   └── partner_cache.json
+├── docs
+│   ├── fix_sync_issue_report.md
+│   ├── PROGETTO_COMPLETATO.md
+│   └── SISTEMA_COMPLETATO.md
+├── generate_project_documentation.sh
+├── installazione
+│   ├── backups
+│   ├── config
+│   ├── cron
+│   ├── docs
+│   │   └── INSTALLAZIONE.md
+│   ├── pacchetto
+│   │   ├── README.md
+│   │   ├── sistema-controllo-accessi-20250725_053438.md5
+│   │   ├── sistema-controllo-accessi-20250725_053438.tar.gz
+│   │   └── sistema-controllo-accessi-20250725_053438.tar.gz.md5
+│   ├── README.md
+│   ├── scripts
+│   │   ├── check_system.sh
+│   │   ├── create_clean_database.py
+│   │   ├── install.sh
+│   │   ├── pacchetto
+│   │   │   └── sistema-controllo-accessi-20250721_135629
+│   │   ├── prepare_package.sh
+│   │   ├── test_hardware.py
+│   │   └── uninstall.sh
+│   └── src
+├── INTERAGIRE_CON_CLINE.md
+├── logs
+│   ├── access_control.log
+│   ├── access_control.log.1
+│   ├── access_control.log.2.gz
+│   ├── raee_access.log
+│   ├── raee_access.log.1
+│   ├── raee_access.log.2.gz
+│   ├── security_audit.log
+│   ├── security_audit.log.1
+│   └── security_audit.log.2.gz
+├── memory
+│   ├── struttura_progetto.txt
+│   └── TODO_MEMORY.md
+├── requirements.txt
+├── scripts
+│   ├── backup_project.py
+│   ├── backup.sh
+│   ├── backup_status.py
+│   ├── check_database_users.py
+│   ├── check_odoo_sync_discrepancy.py
+│   ├── check_system.sh
+│   ├── cleanup_downloads.py
+│   ├── cli_card_tools.sh
+│   ├── complete_project.py
+│   ├── complete_relay_integration.py
+│   ├── create_project_snapshot.py
+│   ├── crontab_reset_contatori.txt
+│   ├── dashboard_launcher.py
+│   ├── debug_card_data.py
+│   ├── deploy_restart_system.sh
+│   ├── emergency_fix.py
+│   ├── enhance_relay_modal_animations.py
+│   ├── fix_dashboard_template.py
+│   ├── install_complete_dashboard.py
+│   ├── install_modern_dashboard.py
+│   ├── integrate_profilo.py
+│   ├── maintenance.py
+│   ├── odoo_count_rende_discrepancy.py
+│   ├── odoo_count_rende.py
+│   ├── project_setup.sh
+│   ├── quick_backup.sh
+│   ├── quick_restart.sh
+│   ├── reset_contatori_mensili.py
+│   ├── restart_system.sh
+│   ├── restore_working_modal.py
+│   ├── start_dashboard.sh
+│   ├── super_tessera_test.py
+│   ├── system_diagnostics.py
+│   ├── system_monitor.py
+│   ├── test_card_reader.py
+│   ├── test_integration_quick.py
+│   ├── test_simple_dashboard.py
+│   ├── test_usb_rly08.py
+│   ├── update_navbar_menu.py
+│   └── verify_relay_modal_status.py
+├── setup_cline_complete.py
+├── src
+│   ├── access.db
+│   ├── api
+│   │   ├── admin_templates.py
+│   │   ├── auth.py
+│   │   ├── auth.pyscio.io
+│   │   ├── backup
+│   │   │   ├── download
+│   │   │   └── __init__.py
+│   │   ├── backup_module.py
+│   │   ├── dashboard_templates.py
+│   │   ├── hardware_detection.py
+│   │   ├── hardware_detection.py.backup
+│   │   ├── hardware_tests.py
+│   │   ├── modules
+│   │   │   ├── activities.py
+│   │   │   ├── configurazione_accessi.py
+│   │   │   ├── dispositivi.py
+│   │   │   ├── email_log_allerte_sistema.py
+│   │   │   ├── __init__.py
+│   │   │   ├── log_management.py
+│   │   │   ├── profilo.py
+│   │   │   ├── __pycache__
+│   │   │   ├── system_users.py
+│   │   │   ├── user_management.py
+│   │   │   ├── utenti_autorizzati.py
+│   │   │   └── utenti.py
+│   │   ├── __pycache__
+│   │   │   ├── auth.cpython-310.pyc
+│   │   │   ├── backup_module.cpython-310.pyc
+│   │   │   ├── dashboard_templates.cpython-310.pyc
+│   │   │   ├── hardware_detection.cpython-310.pyc
+│   │   │   ├── hardware_tests.cpython-310.pyc
+│   │   │   ├── utils.cpython-310.pyc
+│   │   │   └── web_api.cpython-310.pyc
+│   │   ├── static
+│   │   │   ├── css
+│   │   │   ├── favicon.ico
+│   │   │   ├── html
+│   │   │   └── js
+│   │   ├── templates
+│   │   │   ├── configurazione_orari.html
+│   │   │   ├── hardware_test_section.html
+│   │   │   ├── profilo.html
+│   │   │   └── utenti_autorizzati.html
+│   │   ├── test_hardware_integration.py
+│   │   ├── user_menu.py
+│   │   ├── utils
+│   │   ├── utils.py
+│   │   └── web_api.py
+│   ├── core
+│   │   ├── config.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── config.cpython-310.pyc
+│   │       └── __init__.cpython-310.pyc
+│   ├── database
+│   │   ├── database_manager.py
+│   │   └── __pycache__
+│   │       └── database_manager.cpython-310.pyc
+│   ├── database_schema.sql
+│   ├── documentazione_access_control_20250724_115834.md
+│   ├── drivers
+│   │   └── 288K
+│   │       ├── 288K-linux-sample
+│   │       ├── doc
+│   │       ├── install
+│   │       └── linux_crt_288x
+│   ├── external
+│   │   ├── fix_sync_issue.py
+│   │   ├── fix_sync_permanent.py
+│   │   ├── odoo_partner_connector.py
+│   │   ├── __pycache__
+│   │   │   └── odoo_partner_connector.cpython-310.pyc
+│   │   ├── test_connessione_utente_api.py
+│   │   ├── test_query_specifica.py
+│   │   ├── test_sync_fixed.py
+│   │   ├── test_sync_issue.py
+│   │   └── test_utente_specifico.py
+│   ├── genera_documentazione.py
+│   ├── hardware
+│   │   ├── after.txt
+│   │   ├── before.txt
+│   │   ├── card_reader.py
+│   │   ├── crt285_reader.py
+│   │   ├── find_crt288x
+│   │   ├── find_crt288x.c
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── card_reader.cpython-310.pyc
+│   │   │   ├── crt285_reader.cpython-310.pyc
+│   │   │   ├── __init__.cpython-310.pyc
+│   │   │   ├── reader_factory.cpython-310.pyc
+│   │   │   └── usb_rly08_controller.cpython-310.pyc
+│   │   ├── reader_factory.py
+│   │   ├── serial_test
+│   │   ├── test_readers.py
+│   │   └── usb_rly08_controller.py
+│   ├── __init__.py
+│   ├── main.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-310.pyc
+│   │   └── main.cpython-310.pyc
+│   └── utils
+├── test_cline_setup.py
+├── test_orario.py
+├── tests
+│   ├── hardware
+│   ├── integration
+│   └── unit
+│       └── test_configurazione_accessi.py
+├── update_cline_memory.py
+└── venv
+    ├── bin
+    │   ├── activate
+    │   ├── activate.csh
+    │   ├── activate.fish
+    │   ├── Activate.ps1
+    │   ├── black
+    │   ├── blackd
+    │   ├── coverage
+    │   ├── coverage3
+    │   ├── coverage-3.10
+    │   ├── dotenv
+    │   ├── f2py
+    │   ├── flake8
+    │   ├── flask
+    │   ├── gunicorn
+    │   ├── jsonschema
+    │   ├── normalizer
+    │   ├── numpy-config
+    │   ├── pip
+    │   ├── pip3
+    │   ├── pip3.10
+    │   ├── pycodestyle
+    │   ├── pyflakes
+    │   ├── pyserial-miniterm
+    │   ├── pyserial-ports
+    │   ├── py.test
+    │   ├── pytest
+    │   ├── python -> python3
+    │   ├── python3 -> /usr/bin/python3
+    │   ├── python3.10 -> python3
+    │   ├── vba_extract.py
+    │   └── wheel
+    ├── include
+    ├── lib
+    │   └── python3.10
+    │       └── site-packages
+    ├── lib64 -> lib
+    └── pyvenv.cfg
+
+64 directories, 225 files

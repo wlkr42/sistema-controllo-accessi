@@ -1,0 +1,768 @@
+{
+  "utenti_autorizzati": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "codice_fiscale",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "nome",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "cognome",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "email",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "telefono",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "reparto",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "ruolo",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_inserimento",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_aggiornamento",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_scadenza",
+        "type": "DATE",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "attivo",
+        "type": "BOOLEAN",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "note",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "creato_da",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "modificato_da",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "sqlite_sequence": {
+    "columns": [
+      {
+        "name": "name",
+        "type": "",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "seq",
+        "type": "",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "log_accessi": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "codice_fiscale",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "autorizzato",
+        "type": "BOOLEAN",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "durata_elaborazione",
+        "type": "REAL",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "ip_client",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "user_agent",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "terminale_id",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "errore",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "metodo_lettura",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "qualita_lettura",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "sincronizzato",
+        "type": "BOOLEAN",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_sincronizzazione",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "note",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "configurazioni": {
+    "columns": [
+      {
+        "name": "chiave",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "valore",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "tipo",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "descrizione",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "categoria",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "modificabile",
+        "type": "BOOLEAN",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_modifica",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "modificato_da",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "eventi_sistema": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "tipo_evento",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "livello",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "messaggio",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "dettagli",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "componente",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "risolto",
+        "type": "BOOLEAN",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "statistiche": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "data",
+        "type": "DATE",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "totale_accessi",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "accessi_autorizzati",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "accessi_negati",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "tempo_medio_elaborazione",
+        "type": "REAL",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "uptime_sistema",
+        "type": "REAL",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "errori_hardware",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "system_settings": {
+    "columns": [
+      {
+        "name": "key",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "value",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "utenti_sistema": {
+    "columns": [
+      {
+        "name": "username",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "password",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "role",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "attivo",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "created_by",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "modified_at",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "modified_by",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "last_login",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "configurazione_accessi": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "ora_apertura",
+        "type": "TIME",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "ora_chiusura",
+        "type": "TIME",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "max_ingressi_mensili",
+        "type": "INTEGER",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "modificato_da",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_modifica",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "orari_settimanali": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "giorno",
+        "type": "INTEGER",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "mattina_apertura",
+        "type": "TIME",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "mattina_chiusura",
+        "type": "TIME",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "pomeriggio_apertura",
+        "type": "TIME",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "pomeriggio_chiusura",
+        "type": "TIME",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "isola_aperta",
+        "type": "BOOLEAN",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "modificato_da",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_modifica",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "limiti_utenti": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "codice_fiscale",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "max_ingressi_mensili",
+        "type": "INTEGER",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "modificato_da",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_modifica",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "conteggio_ingressi_mensili": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "codice_fiscale",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "mese",
+        "type": "INTEGER",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "anno",
+        "type": "INTEGER",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "numero_ingressi",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "ultimo_ingresso",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "conteggio_ingressi_mensili_archive": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "codice_fiscale",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "mese",
+        "type": "INTEGER",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "anno",
+        "type": "INTEGER",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "numero_ingressi",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "ultimo_ingresso",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "data_archiviazione",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "orari_accesso": {
+    "columns": [
+      {
+        "name": "giorno",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "aperto",
+        "type": "BOOLEAN",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "mattina_inizio",
+        "type": "TIME",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "mattina_fine",
+        "type": "TIME",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "pomeriggio_inizio",
+        "type": "TIME",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "pomeriggio_fine",
+        "type": "TIME",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "updated_by",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "limiti_accesso": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "max_ingressi_mensili",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "updated_by",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  },
+  "log_forzature": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "not_null": false,
+        "primary_key": true
+      },
+      {
+        "name": "tipo",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "utente",
+        "type": "TEXT",
+        "not_null": true,
+        "primary_key": false
+      },
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "not_null": false,
+        "primary_key": false
+      },
+      {
+        "name": "dettagli",
+        "type": "TEXT",
+        "not_null": false,
+        "primary_key": false
+      }
+    ]
+  }
+}
