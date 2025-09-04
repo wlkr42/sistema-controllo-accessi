@@ -604,6 +604,11 @@ ADMIN_CONFIG_TEMPLATE = """
                     <i class="fas fa-envelope"></i> Email
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#debug">
+                    <i class="fas fa-bug"></i> Debug
+                </a>
+            </li>
         </ul>
 
         <!-- Tab Content -->
@@ -692,75 +697,6 @@ ADMIN_CONFIG_TEMPLATE = """
                         <div id="hardware-list" class="mt-3"></div>
                     </div>
                 </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-microchip me-2"></i>Configurazioni Hardware</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="hardware-form">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>Lettore Tessere</h6>
-                                    <div class="mb-3">
-                                        <label class="form-label">Tipo Lettore</label>
-                                        <select class="form-select" id="reader-type">
-                                            <option value="CRT-285" selected>CRT-285/288K Tessera Sanitaria</option>
-                                            <option value="HID Omnikey 5427CK">HID Omnikey 5427CK</option>
-                                            <option value="HID Omnikey 5321">HID Omnikey 5321</option>
-                                            <option value="Generic RFID Reader">Lettore RFID Generico</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Porta Lettore</label>
-                                        <select class="form-select" id="reader-port" disabled>
-                                            <option value="usb:23d8:0285" selected>USB Direct (23d8:0285)</option>
-                                        </select>
-                                        <small class="text-muted">CRT-285 usa comunicazione USB diretta, non seriale</small>
-                                    </div>
-                                    <div class="mb-3">
-                                        <button type="button" id="test-reader" class="btn btn-info" onclick="testReader()">
-                                            <i class="fas fa-vial me-2"></i>Test Lettore
-                                        </button>
-                                        <div id="test-reader-result" class="mt-2"></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>Controller USB-RLY08</h6>
-                                    <div class="mb-3">
-                                        <label class="form-label">Porta Relè</label>
-                                        <select class="form-select" id="relay-port">
-                                            <option value="/dev/ttyACM0" selected>/dev/ttyACM0 (USB-RLY08)</option>
-                                            <option value="/dev/ttyUSB0">/dev/ttyUSB0</option>
-                                            <option value="/dev/ttyUSB1">/dev/ttyUSB1</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Baud Rate</label>
-                                        <select class="form-select" id="relay-baudrate">
-                                            <option value="9600">9600</option>
-                                            <option value="19200" selected>19200</option>
-                                            <option value="38400">38400</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Durata Apertura Cancello (sec)</label>
-                                        <input type="number" class="form-control" id="gate-duration" value="8" min="1" max="30">
-                                    </div>
-                                    <div class="mb-3">
-                                        <button type="button" id="test-relay" class="btn btn-info" onclick="testRelay()">
-                                            <i class="fas fa-vial me-2"></i>Test Relè
-                                        </button>
-                                        <div id="test-relay-result" class="mt-2"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-save"></i> Salva Configurazioni Hardware
-                            </button>
-                        </form>
-                    </div>
-                </div>
             </div>
 
             <!-- Sicurezza -->
@@ -798,6 +734,62 @@ ADMIN_CONFIG_TEMPLATE = """
                                 <i class="fas fa-save"></i> Salva Configurazioni Sicurezza
                             </button>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug -->
+            <div class="tab-pane fade" id="debug">
+                <div class="card mb-3">
+                    <div class="card-header bg-dark text-white">
+                        <h5><i class="fas fa-terminal me-2"></i>Console Log in Tempo Reale</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <button id="toggle-log" class="btn btn-primary">
+                                <i class="fas fa-play"></i> Avvia Log
+                            </button>
+                            <button id="clear-log" class="btn btn-secondary">
+                                <i class="fas fa-eraser"></i> Pulisci
+                            </button>
+                            <button id="restart-service" class="btn btn-danger float-end">
+                                <i class="fas fa-sync-alt"></i> Riavvia Servizio
+                            </button>
+                        </div>
+                        <div class="log-container" style="background: #1e1e1e; color: #0f0; font-family: monospace; padding: 15px; height: 500px; overflow-y: auto; border-radius: 5px;">
+                            <div id="log-output">
+                                <div class="text-muted">Log non attivo. Clicca 'Avvia Log' per iniziare...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-heartbeat me-2"></i>Stato Sistema</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Servizio Web API</h6>
+                                <div id="service-status" class="mb-3">
+                                    <span class="badge bg-secondary">Controllo...</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Lettore Tessere</h6>
+                                <div id="reader-status" class="mb-3">
+                                    <span class="badge bg-secondary">Controllo...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <button id="check-status" class="btn btn-info">
+                                    <i class="fas fa-heartbeat"></i> Verifica Stato
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -898,6 +890,139 @@ ADMIN_CONFIG_TEMPLATE = """
                 document.getElementById('user-menu-placeholder').innerHTML = html;
                 new UserMenu();
             });
+        
+        // Debug section functionality
+        let logInterval = null;
+        let isLogging = false;
+        
+        // Toggle log streaming
+        document.getElementById('toggle-log')?.addEventListener('click', function() {
+            const btn = this;
+            if (!isLogging) {
+                startLogStreaming();
+                btn.innerHTML = '<i class="fas fa-pause"></i> Ferma Log';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-warning');
+            } else {
+                stopLogStreaming();
+                btn.innerHTML = '<i class="fas fa-play"></i> Avvia Log';
+                btn.classList.remove('btn-warning');
+                btn.classList.add('btn-primary');
+            }
+        });
+        
+        // Clear log
+        document.getElementById('clear-log')?.addEventListener('click', function() {
+            document.getElementById('log-output').innerHTML = '<div class="text-muted">Log pulito...</div>';
+        });
+        
+        // Restart service
+        document.getElementById('restart-service')?.addEventListener('click', function() {
+            if (confirm('Sei sicuro di voler riavviare il servizio? Il sistema sarà non disponibile per alcuni secondi.')) {
+                const btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Riavvio in corso...';
+                
+                fetch('/api/restart-service', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Servizio riavviato con successo!');
+                        setTimeout(() => window.location.reload(), 3000);
+                    } else {
+                        alert('Errore: ' + (data.error || 'Sconosciuto'));
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-sync-alt"></i> Riavvia Servizio';
+                    }
+                })
+                .catch(error => {
+                    setTimeout(() => window.location.reload(), 5000);
+                });
+            }
+        });
+        
+        // Check system status
+        document.getElementById('check-status')?.addEventListener('click', checkSystemStatus);
+        
+        function startLogStreaming() {
+            isLogging = true;
+            const logOutput = document.getElementById('log-output');
+            logOutput.innerHTML = '<div class="text-info">Connessione al log...</div>';
+            
+            logInterval = setInterval(() => {
+                fetch('/api/system-logs')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.logs && data.logs.length > 0) {
+                            logOutput.innerHTML = '';
+                            data.logs.forEach(log => {
+                                const logLine = document.createElement('div');
+                                logLine.style.marginBottom = '2px';
+                                
+                                if (log.includes('ERROR') || log.includes('❌')) {
+                                    logLine.style.color = '#ff6b6b';
+                                } else if (log.includes('WARNING') || log.includes('⚠️')) {
+                                    logLine.style.color = '#ffd93d';
+                                } else if (log.includes('INFO') || log.includes('✅')) {
+                                    logLine.style.color = '#6bcf7f';
+                                } else if (log.includes('DEBUG')) {
+                                    logLine.style.color = '#95a5a6';
+                                } else {
+                                    logLine.style.color = '#0f0';
+                                }
+                                
+                                logLine.textContent = log;
+                                logOutput.appendChild(logLine);
+                            });
+                            
+                            const container = document.querySelector('.log-container');
+                            if (container) container.scrollTop = container.scrollHeight;
+                        }
+                    })
+                    .catch(error => console.error('Errore log:', error));
+            }, 1000);
+        }
+        
+        function stopLogStreaming() {
+            isLogging = false;
+            if (logInterval) {
+                clearInterval(logInterval);
+                logInterval = null;
+            }
+            const output = document.getElementById('log-output');
+            if (output) output.innerHTML += '<div class="text-warning mt-2">--- Log fermato ---</div>';
+        }
+        
+        function checkSystemStatus() {
+            fetch('/api/system-status')
+                .then(response => response.json())
+                .then(data => {
+                    const serviceStatus = document.getElementById('service-status');
+                    if (serviceStatus) {
+                        serviceStatus.innerHTML = data.service_running ? 
+                            '<span class="badge bg-success">✅ Attivo</span>' : 
+                            '<span class="badge bg-danger">❌ Non attivo</span>';
+                    }
+                    
+                    const readerStatus = document.getElementById('reader-status');
+                    if (readerStatus) {
+                        readerStatus.innerHTML = data.reader_connected ? 
+                            `<span class="badge bg-success">✅ ${data.reader_type || 'Connesso'}</span>` : 
+                            '<span class="badge bg-warning">⚠️ Non connesso</span>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore stato:', error);
+                });
+        }
+        
+        // Check status on load if debug tab exists
+        if (document.getElementById('debug')) {
+            checkSystemStatus();
+        }
         
         // Form handlers
         document.getElementById('sistema-form').addEventListener('submit', function(e) {

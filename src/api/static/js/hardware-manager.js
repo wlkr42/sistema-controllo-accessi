@@ -26,11 +26,11 @@ class SimpleHardwareManager {
             this.saveButton.addEventListener('click', () => this.saveConfiguration());
         }
         
-        // Carica configurazione esistente
-        this.loadConfiguration();
-        
         // Auto-rilevamento iniziale
-        this.detectHardware();
+        this.detectHardware().then(() => {
+            // Carica configurazione esistente DOPO il rilevamento hardware
+            this.loadConfiguration();
+        });
     }
     
     async detectHardware() {
@@ -200,7 +200,7 @@ class SimpleHardwareManager {
                 <select class="form-select mb-2" id="card-reader-select">
                     <option value="">-- Seleziona dispositivo --</option>
                 </select>
-                <button class="btn btn-sm btn-outline-success" onclick="hardwareManager.testDevice('card_reader')">
+                <button class="btn btn-sm btn-outline-success" onclick="window.hardwareManager.testDevice('card_reader', event)">
                     <i class="fas fa-vial"></i> Test
                 </button>
                 <div id="card-reader-test-result" class="mt-2"></div>
@@ -211,14 +211,14 @@ class SimpleHardwareManager {
                 <select class="form-select mb-2" id="relay-controller-select">
                     <option value="">-- Seleziona dispositivo --</option>
                 </select>
-                <button class="btn btn-sm btn-outline-success" onclick="hardwareManager.testDevice('relay_controller')">
+                <button class="btn btn-sm btn-outline-success" onclick="window.hardwareManager.testDevice('relay_controller', event)">
                     <i class="fas fa-vial"></i> Test
                 </button>
                 <div id="relay-controller-test-result" class="mt-2"></div>
             </div>
             
             <div class="d-grid">
-                <button class="btn btn-primary" onclick="hardwareManager.saveConfiguration()">
+                <button class="btn btn-primary" onclick="window.hardwareManager.saveConfiguration()">
                     <i class="fas fa-save me-2"></i>Salva Configurazione
                 </button>
             </div>
@@ -358,19 +358,15 @@ class SimpleHardwareManager {
             cardReaderSelect.innerHTML = '<option value="">-- Seleziona dispositivo --</option>';
             if (this.deviceAssignments.card_reader) {
                 const dev = this.deviceAssignments.card_reader;
-                const label = dev.device_name + (dev.device_path ? ` [${dev.device_path}]` : '');
-                cardReaderSelect.innerHTML += `<option value="card_reader" selected>${label}</option>`;
-                // Se CRT-285 e device_path ≠ /dev/ttyACM0, mostra avviso symlink
-                if (dev.device_key && dev.device_key.includes("23d8:0285") && dev.device_path && dev.device_path !== "/dev/ttyACM0") {
-                    setTimeout(() => {
-                        this.showAlert(
-                            'warning',
-                            `⚠️ Per il lettore CRT-285 è necessario creare un symlink:<br>
-                            <code>sudo ln -sf ${dev.device_path} /dev/ttyACM0</code><br>
-                            La libreria ufficiale supporta solo <b>/dev/ttyACM0</b>.`
-                        );
-                    }, 500);
+                // Per CRT-285 non mostrare il device_path perché usa USB diretto
+                let label = dev.device_name;
+                if (dev.device_key && dev.device_key.includes("23d8:0285")) {
+                    // CRT-285 usa comunicazione USB diretta, non seriale
+                    label = dev.device_name; // Solo il nome, senza path
+                } else if (dev.device_path) {
+                    label = dev.device_name + ` [${dev.device_path}]`;
                 }
+                cardReaderSelect.innerHTML += `<option value="card_reader" selected>${label}</option>`;
             }
         }
 
@@ -380,6 +376,7 @@ class SimpleHardwareManager {
             relaySelect.innerHTML = '<option value="">-- Seleziona dispositivo --</option>';
             if (this.deviceAssignments.relay_controller) {
                 const dev = this.deviceAssignments.relay_controller;
+                // Per USB-RLY08 mostra sempre il device_path perché usa comunicazione seriale
                 const label = dev.device_name + (dev.device_path ? ` [${dev.device_path}]` : '');
                 relaySelect.innerHTML += `<option value="relay_controller" selected>${label}</option>`;
             }
@@ -395,7 +392,7 @@ class SimpleHardwareManager {
         return names[functionKey] || functionKey;
     }
     
-    async testDevice(deviceType) {
+    async testDevice(deviceType, event) {
         const assignment = this.deviceAssignments[deviceType];
         if (!assignment) {
             this.showAlert('warning', 'Nessun dispositivo assegnato per il test');
@@ -403,26 +400,71 @@ class SimpleHardwareManager {
         }
 
         const resultDiv = document.getElementById(`${deviceType.replace('_', '-')}-test-result`);
+        const testButton = event ? event.target.closest('button') : null;
+        
+        // Disabilita il pulsante durante il test
+        if (testButton) {
+            testButton.disabled = true;
+            const originalHtml = testButton.innerHTML;
+            testButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+            testButton.dataset.originalHtml = originalHtml;
+        }
+        
         if (resultDiv) {
-            resultDiv.innerHTML = '<small class="text-info">Test in corso...</small>';
+            resultDiv.innerHTML = `<div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                   <small class="text-info">Test in corso...</small>`;
         }
 
         try {
-            const response = await fetch('/api/hardware/test-connection', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
+            let endpoint, body;
+            
+            if (deviceType === 'relay_controller') {
+                // Usa l'endpoint che funziona nel dashboard principale
+                endpoint = '/api/test_relay';
+                body = {};
+            } else {
+                // Per il lettore tessere
+                endpoint = '/api/hardware/test-connection';
+                body = {
                     type: deviceType,
                     device_path: assignment.device_path || assignment.device_key,
                     device_id: assignment.device_key
-                })
+                };
+            }
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
-            this.showTestResult(deviceType, data.success, data);
+            
+            if (deviceType === 'relay_controller' && data.success) {
+                // Per il relè, aspetta un po' per mostrare che sta funzionando
+                setTimeout(() => {
+                    this.showTestResult(deviceType, data.success, data);
+                }, 2000);
+                
+                if (resultDiv) {
+                    resultDiv.innerHTML = `<div class="alert alert-warning alert-sm mb-0">
+                        <small><i class="fas fa-bolt me-1"></i> Relè attivato! Ascolta i click dei relè...</small>
+                    </div>`;
+                }
+            } else {
+                this.showTestResult(deviceType, data.success, data);
+            }
 
         } catch (error) {
             this.showTestResult(deviceType, false, {error: error.message});
+        } finally {
+            // Ripristina il pulsante dopo 2 secondi
+            if (testButton) {
+                setTimeout(() => {
+                    testButton.disabled = false;
+                    testButton.innerHTML = testButton.dataset.originalHtml || '<i class="fas fa-vial"></i> Test';
+                }, 2000);
+            }
         }
     }
     
@@ -432,13 +474,27 @@ class SimpleHardwareManager {
         
         const alertClass = success ? 'alert-success' : 'alert-danger';
         const icon = success ? 'fa-check-circle' : 'fa-times-circle';
-        const message = data.message || (success ? 'Test OK' : data.error || 'Test fallito');
+        let message = data.message || (success ? 'Test OK' : data.error || 'Test fallito');
+        
+        // Messaggi personalizzati per ogni tipo di dispositivo
+        if (success) {
+            if (deviceType === 'card_reader') {
+                message = '✅ Lettore tessere connesso e funzionante!';
+            } else if (deviceType === 'relay_controller') {
+                message = '✅ Test relè completato - Tutti i relè sono stati attivati in sequenza!';
+            }
+        }
         
         resultDiv.innerHTML = `
             <div class="alert ${alertClass} alert-sm mb-0">
                 <small><i class="fas ${icon} me-1"></i> ${message}</small>
             </div>
         `;
+        
+        // Rimuovi il messaggio dopo 5 secondi
+        setTimeout(() => {
+            resultDiv.innerHTML = '';
+        }, 5000);
     }
     
     async loadConfiguration() {
@@ -468,6 +524,8 @@ class SimpleHardwareManager {
             const data = await response.json();
             if (data.success) {
                 this.showAlert('success', 'Configurazione salvata con successo');
+                // Ricarica la configurazione per aggiornare i dropdown
+                await this.loadConfiguration();
             } else {
                 this.showAlert('danger', `Errore salvataggio: ${data.error}`);
             }

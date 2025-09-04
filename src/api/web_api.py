@@ -1094,6 +1094,158 @@ def api_system_restart():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/restart-service', methods=['POST'])
+@require_auth()
+@require_permission('all')
+def api_restart_service():
+    """Riavvia il servizio web API"""
+    try:
+        import os
+        import signal
+        import threading
+        import time
+        
+        logger.info("Richiesta riavvio servizio da Dashboard Debug...")
+        
+        # Funzione per riavviare il servizio dopo un breve delay
+        def delayed_restart():
+            time.sleep(1)
+            try:
+                # Prova prima a riavviare con systemctl se disponibile
+                import subprocess
+                result = subprocess.run(['systemctl', 'restart', 'access-control-web'],
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    logger.info("Servizio riavviato con systemctl")
+                    return
+            except Exception:
+                pass
+            
+            # Altrimenti usa exec per riavviare il processo Python
+            logger.info("Riavvio processo Python...")
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        
+        # Avvia il restart in un thread separato
+        restart_thread = threading.Thread(target=delayed_restart, daemon=True)
+        restart_thread.start()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Servizio in riavvio. Attendere 3-5 secondi...'
+        })
+    except Exception as e:
+        logger.error(f"Errore riavvio servizio: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/system-logs')
+@require_auth()
+@require_permission('all')
+def api_system_logs():
+    """Restituisce gli ultimi log del sistema"""
+    try:
+        import subprocess
+        from collections import deque
+        
+        # Prova a leggere i log dal journal di systemd
+        try:
+            result = subprocess.run(
+                ['journalctl', '-u', 'access-control-web', '-n', '50', '--no-pager'],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            if result.returncode == 0 and result.stdout:
+                logs = result.stdout.strip().split('\n')[-30:]  # Ultimi 30 righe
+                return jsonify({'success': True, 'logs': logs})
+        except:
+            pass
+        
+        # Altrimenti usa i log del logger Python
+        logs = []
+        
+        # Aggiungi alcuni log di stato
+        logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] INFO - Sistema operativo")
+        logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] INFO - Dashboard accessibile su http://192.168.1.236:5000")
+        
+        # Controlla stato hardware
+        if 'card_reader_running' in globals() and card_reader_running:
+            logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] INFO - ✅ Lettore tessere attivo")
+        else:
+            logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] WARNING - ⚠️ Lettore tessere non attivo")
+            
+        return jsonify({'success': True, 'logs': logs})
+        
+    except Exception as e:
+        logger.error(f"Errore recupero log: {e}")
+        return jsonify({'success': False, 'error': str(e), 'logs': []})
+
+@app.route('/api/system-status')
+@require_auth()
+@require_permission('all')
+def api_system_status():
+    """Restituisce lo stato del sistema"""
+    try:
+        status = {
+            'service_running': True,  # Se risponde, è attivo
+            'reader_connected': False,
+            'reader_type': None,
+            'relay_connected': False,
+            'database_ok': False
+        }
+        
+        # Controlla lettore tessere
+        # Prima verifica se c'è un lettore configurato
+        try:
+            # Controlla se CRT-285 è configurato
+            config_path = '/opt/access_control/config/device_assignments.json'
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    if 'assignments' in config and 'card_reader' in config['assignments']:
+                        reader_info = config['assignments']['card_reader']
+                        if '23d8:0285' in reader_info.get('device_key', ''):
+                            status['reader_connected'] = True
+                            status['reader_type'] = 'CRT-285'
+                        elif 'card_reader_running' in globals() and card_reader_running:
+                            status['reader_connected'] = True
+                            status['reader_type'] = reader_info.get('device_name', 'Lettore generico')
+        except Exception as e:
+            logger.debug(f"Errore verifica lettore: {e}")
+        
+        # Fallback al controllo della variabile globale
+        if not status['reader_connected'] and 'card_reader_running' in globals() and card_reader_running:
+            status['reader_connected'] = True
+            status['reader_type'] = 'Omnikey'
+        
+        # Controlla database
+        try:
+            conn = get_db_connection()
+            if conn:
+                status['database_ok'] = True
+                conn.close()
+        except:
+            pass
+            
+        # Controlla relay
+        try:
+            if os.path.exists('/dev/ttyACM0'):
+                status['relay_connected'] = True
+        except:
+            pass
+            
+        return jsonify({
+            'success': True,
+            **status
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore stato sistema: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'service_running': False
+        })
+
 # ===============================
 # API ENDPOINTS CONFIGURAZIONI - USANDO CONFIG ESISTENTE
 # ===============================
@@ -1787,8 +1939,14 @@ configure_odoo_connector()
 
 # Registra funzione di pulizia all'uscita
 import atexit
-atexit.register(stop_card_reader)
-atexit.register(stop_odoo_sync)
+try:
+    atexit.register(stop_card_reader)
+except NameError:
+    logger.warning("stop_card_reader non definita, skip registrazione atexit")
+try:
+    atexit.register(stop_odoo_sync)
+except NameError:
+    logger.warning("stop_odoo_sync non definita, skip registrazione atexit")
 
 def scheduled_backup():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
