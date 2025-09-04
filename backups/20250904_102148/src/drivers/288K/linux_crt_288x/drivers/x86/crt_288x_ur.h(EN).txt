@@ -1,0 +1,582 @@
+#ifndef __CRT_288K_UR__
+#define __CRT_288K_UR__
+#include <stdbool.h>
+
+#define BYTE unsigned char
+#define WORD unsigned short 
+#define DWORD unsigned int
+
+//communication protocol
+#define ENQ  0x05
+#define ACK  0x06
+#define NAK  0x15
+#define EOT  0x04
+#define CAN  0x18
+#define STX  0xF2
+#define ETX  0x03
+#define US   0x1F
+
+//error code
+#define CRT_ERRCOUNT                 -200
+#define CRT_ERR_CMD                  (CRT_ERRCOUNT-1) //command  charactor error
+#define CRT_ERR_CMDPARAM             (CRT_ERRCOUNT-2) //command parameter error
+#define CRT_ERR_CMDDENIAL            (CRT_ERRCOUNT-3) //command can't be executed
+#define CRT_ERR_DEVNOTSUP            (CRT_ERRCOUNT-4) //hardware doesn't support
+#define CRT_ERR_CMDDATA              (CRT_ERRCOUNT-5) //command data error
+#define CRT_ERR_LOCKCARD             (CRT_ERRCOUNT-11) //fail to operate latch hook
+#define CRT_ERR_EEPROM               (CRT_ERRCOUNT-15) //EEPROM error
+#define CRT_ERR_TRACKCHECK           (CRT_ERRCOUNT-20) //read Mag-card error£¨parity error£©
+#define CRT_ERR_READTRACK            (CRT_ERRCOUNT-21) //read Mag-card error
+#define CRT_ERR_POWERDOWN            (CRT_ERRCOUNT-30) //ICRW power dump£¨Power down£©
+#define CRT_ERR_ICPROCESS            (CRT_ERRCOUNT-41) //fail to operate IC card module
+#define CRT_ERR_ICPOWERSHORT         (CRT_ERRCOUNT-60) //IC card power short cut
+#define CRT_ERR_ICACTIVATIONFAIL     (CRT_ERRCOUNT-61) //IC card fail to activate 
+#define CRT_ERR_ICDENIAL             (CRT_ERRCOUNT-62) //IC card doesn't support current command
+#define CRT_ERR_ICNOTRESPOND         (CRT_ERRCOUNT-63) //IC card communication error
+#define CRT_ERR_ICNOTRESPOND_OTHER   (CRT_ERRCOUNT-64) //IC card communicate error (other)
+#define CRT_ERR_ICNOTACTIVATION      (CRT_ERRCOUNT-65) //IC card isn't activated
+#define CRT_ERR_ICNOTSUP             (CRT_ERRCOUNT-66) //ICRW doesn't support this kind IC card
+#define CRT_ERR_ICEMV                (CRT_ERRCOUNT-66) //no support EMV mode
+#define CRT_ERR_COMMTIMEOUT	         (CRT_ERRCOUNT-80) //communication time out, failure
+#define CRT_ERR_CANCEL	             (CRT_ERRCOUNT-84) //command cancel
+#define CRT_ERR_PWDPROCESS	         (CRT_ERRCOUNT-90) //fail to operate parity password
+#define CRT_ERR_PWDCHECK	         (CRT_ERRCOUNT-91) //faiure of parity password
+#define CRT_ERR_PWDSCRAP	         (CRT_ERRCOUNT-92) //faiure of parity password£¬the card is locked
+#define CRT_ERR_PWDADDROVERFLOW	     (CRT_ERRCOUNT-93) //operation address overflow
+#define CRT_ERR_PWDLENOVERFLOW	     (CRT_ERRCOUNT-94) //operation Len overflow
+#define CRT_ERR_PWDPMERR	         (CRT_ERRCOUNT-95) //PM error
+#define CRT_ERR_PWDCMERR	         (CRT_ERRCOUNT-96) //CM error
+#define CRT_ERR_UNKNOWN              (CRT_ERRCOUNT-99) //unknown error
+
+//open device
+#define CRT_OPEN_TYPEUSB             0 //USB to open
+#define CRT_OPEN_TYPERS232           1 //RS232 to open
+
+//initialization
+#define CRT_INIT_NOTUNLOCK          0 //initialization no action
+#define CRT_INIT_UNLOCK             1 //initialization unlock
+
+
+//card status
+#define CRT_CARDST_NOCARD             1 //no card
+#define CRT_CARDST_INDOOR             2 //card insertion
+#define CRT_CARDST_INSIDE             3 //card inside
+#define CRT_CARDST_UNKNOW             9 //device is offline, the card status unknown
+
+//card latch status
+#define CRT_LOCKCARD_NOTLOCK            1 //no latch
+#define CRT_LOCKCARD_LOCKED             2 //locked
+#define CRT_LOCKCARD_UNKNOW             9 //device is offline, the card latch status unknown
+
+//reader action
+#define CRT_RDACTION_NOACTION           0 //no action
+#define CRT_RDACTION_UNLOCK             1 //unlock
+#define CRT_RDACTION_LOCKED             2 //card latch
+#define CRT_RDACTION_AUTOLOCKED         3 //auto-latch with card
+#define CRT_RDACTION_NOTAUTOLOCK        4 //no auto-latch with card
+
+//operation LED 
+#define  CRT_LED_RED                    0 //operation red indicator
+#define  CRT_LED_BLUE                   1 //operation blue indicator
+#define  CRT_LED_ALL                    2 //operation all indicators
+
+//LED control
+#define  CRT_LED_OFF                    0 //close
+#define  CRT_LED_ON                     1 //open
+#define  CRT_LED_FLASHING               2 //flash
+
+//Mag-card reading position
+#define CRT_SETMAGTYPE_READASCII        0x00000000 //reading with ASCII
+#define CRT_SETMAGTYPE_READHEX          0x00000001 //read with binary
+#define CRT_SETMAGTYPE_AUTOUPLOAD       0x00000000 //active to upload track data
+#define CRT_SETMAGTYPE_NOTUPLOAD        0x00000010 //prohibit to active to upload track data
+#define CRT_SETMAGTYPE_EFFINSERT        0x00000000 //data is valid when insert the card
+#define CRT_SETMAGTYPE_EFFUPPLUG        0x00000100 //data is valid when pull the card
+
+//read Mag-track
+#define CRT_ReadTracks_Track1           1 //track 1 data
+#define CRT_ReadTracks_Track2           2 //track 2 data
+#define CRT_ReadTracks_Track3           3 //track 3 data
+
+/** 
+ * @fn		CRT288x_OpenConnection() 
+ * @detail	open equipment
+ * @see		...
+ * @param	[in]iOpenMode--open mode:0 USB connection mode£¬ 1 RS232 mode
+ * @param	[in]iComPort--set COM port (USB£¬no need set)
+ * @param	[in]lBaudRate--set baudrate (default 9600)
+ * @return	result,0: success£¬others: error.
+ * @exception ...
+ * @example USB connection£ºint iRet = CRT288x_OpenConnection(0); 
+            COM3, baudrate:9600 connection£ºint iRet = CRT288x_OpenConnection(1, 3, 9600);
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int CRT288x_OpenConnection(int iOpenMode, int iComPort, long lBaudRate);
+
+
+
+/** 
+ * @fn		CRT288x_CloseConnection() 
+ * @detail	close equipment
+ * @see		...
+ * @return	result,0: success£¬others: error.
+ * @exception ...
+ * @example int iRet = CRT288x_CloseConnection(); 
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int CRT288x_CloseConnection();
+
+
+
+/** 
+ * @fn		CRT288x_ExeCommand() 
+ * @detail	send execution command
+ * @see		...
+ * @param	[in]iSendDataLen:sent command length
+ * @param	[in]bySendData:sent command
+ * @param	[out]iRecvDataLen:returned command length
+ * @param	[out]byRecvData:returned command
+ * @param	[out]byStCode:returned execution status code
+ * @return	result,0: success£¬others: error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_ExeCommand(int iSendDataLen, BYTE bySendData[] , int* iRecvDataLen, BYTE byRecvData[],BYTE byStCode[]);
+
+
+
+/** 
+ * @fn		CRT288x_InitDev() 
+ * @detail	initialization of equipment
+ * @see		...
+ * @param	[in]InitMode--initialize mode:0 no action£¬ 1 unlock
+ * @return	result,0: success£¬others: error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int CRT288x_InitDev(int InitMode );
+
+
+/** 
+ * @fn		CRT288x_GetCardStatus() 
+  * @detail	get the card status
+ * @see		...
+ * @return	the card status: 1 no card£¬ 3 the card inside the reader£¬ 9 the machine offline£¬the card status unknown
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_GetCardStatus();
+
+
+
+/** 
+ * @fn		CRT288x_GetLockStatus() 
+ * @detail	get card lock status
+ * @see		...
+ * @return	card status: 1 card unlock£¬2 card lock£¬ 9 decice not on-line£¬ card lock status unknown
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_GetLockStatus();
+
+
+
+/** 
+ * @fn		CRT288x_LockedProcess() 
+ * @detail	lock operation
+ * @see		...
+ * @param	[in]iLockType--reader locks card operation:0 no action£¬ 1 unlock£¬ 2 card lock£¬ 3 auto-lock with card£¬ 4 don't auto-lock with card
+ * @return	result,0 success£¬others error
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_LockedProcess(int iLockType);
+
+
+
+/** 
+ * @fn		CRT288x_LEDProcess() 
+ * @detail	indicator operation
+ * @see		...
+ * @param	[in]iLightType--operation indicator:0 red indicator£¬1 blue indicator£¬ 2 all indicator
+ * @param	[in]iFlag--indicator status:0 dark£¬1 light£¬ 2 flash
+ * @return	result,0 success£¬others error
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_LEDProcess(int iLightType, int iFlag);
+
+
+
+/** 
+ * @fn		CRT288x_SetLEDFlashTime() 
+  * @detail	set indicator flash time
+ * @see		...
+ * @param	[in]iOnTime--indicator flash, light time: £¨0x00-0xFF£©*0.25 sec
+ * @param	[in]iOffTime--indicator flash, dark time: £¨0x00-0xFF£©*0.25 sec
+ * @return	result,0 success£¬ others error
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_SetLEDFlashTime(int iOnTime, int iOffTime);
+
+
+
+/** 
+ * @fn		CRT288x_SetReaderMagType() 
+ * @detail	set reader mag-stripe card reading method
+ * @see		...
+ * @param	[in]iReadMode--card read method: 0 ASCII data of card reading£¬ 1 bin data of card reading
+ * @param	[in]iDataMode--data valid mode: 0 data valid when inserting the card£¬ 1 data valid when pulling the card 
+  * @param	[in]bAutoUpload--data active uploading: TRUE allow to active uploading£¬ FALSE ban to active uploading 
+ * @return	result,0 success£¬others error
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_SetReaderMagType(int iReadMode, int iDataMode, bool bAutoUpload);
+
+
+
+/** 
+ * @fn		CRT288x_ReadTrack() 
+  * @detail	read single track data
+ * @see		...
+ * @param	[in]iTrackNum--track number: 1 track1£¬ 2 track2£¬ 3 track3
+ * @param	[out]szTrackData--return tracks data 
+ * @return	result,0 success£¬others error
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_ReadTrack(int iTrackNum, char szTrackData[]);
+
+
+
+
+/** 
+ * @fn		CRT288x_ReadAllTracks() 
+ * @detail	read all tracks data
+ * @see		...
+ * @param	[out]szTrack1Data--return track1 data
+ * @param	[out]szTrack2Data--return track2 data
+ * @param	[out]szTrack3Data--return track3 data
+ * @return	result,0 success£¬others error
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_ReadAllTracks(char szTrack1Data[], char szTrack2Data[], char szTrack3Data[]);
+
+
+
+/** 
+ * @fn		CRT288x_ClearTrackData() 
+* @detail	clear tracks data in buffer 
+ * @see		...
+ * @return	result,0 success£¬others error
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_ClearTrackData();
+
+
+
+/** 
+ * @fn		CRT288x_GetICType() 
+ * @detail	get IC card type
+ * @see		...
+ * @return	result,0 S50, 1 S70, 2 UL card, 4 TYPEA CPU card£¬ 5 TYPEB CPU card£¬ 9 unknown RF type£¬ 10 T=0 contact CPU card£¬ 11 T=1 contact CPU card£¬ 20 24C01£¬ 21 24C02£¬22 24C04£¬ 23 24C08£¬ 24 24C16£¬ 25 24C32£¬ 26 24C64£¬ 30 SL4442£¬ SL4428, 98 no card£¬ 99 unknown card type£¬ other failure
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_GetICType();
+
+
+
+/** 
+ * @fn		CRT288x_GetRFType() 
+ * @detail	get (contactless) RF card type
+ * @see		...
+ * @return	result,0: unknown RF card type£¬others: error£¬ 110 S50£¬ 111 S70£¬ 112 UL£¬ 120 TypeA CPU£¬ 130 TypeB CPU.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_GetRFType();
+
+
+
+/** 
+ * @fn		CRT288x_ChipPower() 
+ * @detail	power on IC card to operate
+ * @see		...
+ * @param	[in]iICType--IC card type: 10 T=0 CPU£¬ 11 T=1 CPU£¬ 20 SL4442£¬ 21 SL4428£¬ 30 AT24C01£¬ 31 AT24C02£¬ 32 AT24C04£¬
+							  33 AT24C08£¬ 34 AT24C16£¬ 35 AT24C32£¬ 36 AT24C64£¬ 37 AT24C128£¬ 38 AT24C256
+							  110 S50£¬ 111 S70£¬ 112 UL£¬ 120 TypeA CPU£¬ 130 TypeB CPU£¬ 210 SAM .
+ * @param	[in]wChipPower--power on to operate: 0x02 cold reset activate£¬ 0x04 warm reset activate£¬ 0x08 deactive
+ * @param	[out]byOutChipData--cold reset to return ATR data
+ * @param	[out]iOutChipDatalen--cold reset returning ATR data length
+ * @return	result,0 success£¬others error
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_ChipPower(int iICType, WORD wChipPower, BYTE byOutChipData[], int* iOutChipDatalen);
+
+
+
+
+/** 
+ * @fn		CRT288x_ChipIO() 
+* @detail	communicate with IC card
+ * @see		...
+ * @param	[in]wChipProtocol--IC card communication protocol: 0 reader select protocol automatically£¬1 T0 protocol£¬ 2 T1 protocol.
+ * @param	[in]ulInChipDataLength--send APDU data length.
+ * @param	[in]lpInbChipData--send APDU data
+ * @param	[out]ulOutChipDataLength--return APDU data length
+ * @param	[out]lpOutbChipData--return APDU data
+ * @return	result,0 success£¬ others error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_ChipIO(WORD wChipProtocol, int ulInChipDataLength , BYTE lpInbChipData[], int* ulOutChipDataLength , BYTE lpOutbChipData[]);
+
+
+
+
+/** 
+ * @fn		CRT288x_GetCardActiveStatus() 
+ * @detail	check current IC card activate status
+ * @see		...
+ * @return	result, 1 the card has been activated£¬current CPU card working clock frequence is 3.57 MHZ£¬ 2 the card has been activated£¬current CPU card working clock frequence is 7.16 MHZ£¬ 3 not activated£¬ 9 unknown activated status, others except 0 is error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_GetCardActiveStatus();
+
+
+
+
+/** 
+ * @fn		CRT288x_SAMSlotChange() 
+* @detail	SAM card slot switching
+ * @see		...
+ * @param	[in]iSamNum--switched SAM slots (1-10) 1 SAM1£¬ 2 SAM2£¬ 3 SAM3£¬ 4 SAM4
+ * @return	result, 0 success£¬others except 0 error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_SAMSlotChange(int iSamNum);
+
+
+
+
+/** 
+ * @fn		CRT288x_SetVcc() 
+ * @detail	set Vcc attribute
+ * @see		...
+ * @param	[in]iVcc--Vcc attribute: 1 5V£¬EMV activate£¬ 2 5V£¬ISO7816 activate£¬ 3 3V£¬ISO7816 activate
+ * @return	result, 0 success£¬ others except 0 is error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_SetVcc(int iVcc);
+
+
+
+
+/** 
+ * @fn		CRT288x_SL4442CheckPasswd() 
+ * @detail	SL4442 card checking password
+ * @see		...
+ * @param	[in]iMode--operation mode: 1 checking password£¬ 2 modifying password
+ * @param	[in]uDataLength--password length
+ * @param	[in]lpData--checking password (default is£ºFFFFFF)
+ * @return	result, 0 success£¬others except 0 is error.
+ * @exception  note£ºuser must know the password previously modify the data of SLE4442 card£¬ password error counter value will be changed from 2 or less than 2 to 0,    when the counter value is 0, the card will collapse.
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_SL4442CheckPasswd(int iMode, int uDataLength, BYTE lpData[]);
+
+
+
+
+
+
+/** 
+ * @fn		CRT288x_SL4442Process() 
+ * @detail	SL4442 read/write operation
+ * @see		...
+ * @param	[in]iMode--operation mode   1 read£¬ 2 write
+ * @param	[in]iRegion--operation field   1 main memory, 2 protect bit area£¬ 3 security area
+ * @param	[in]wStartAddr--start position (0x00-0xFF)
+ * @param	[in][out]uDataLength--operation data length (main memory£º0-128£¬ protect bit area£º0-4£¬ security area£º0-4)
+ * @param	[in][out]lpData--operation data (if the mode is writing, that means inputting. if the mode is reading, that means outputting.)
+ * @return	result, 0 success, others except 0 error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_SL4442Process(int iMode, int iRegion ,WORD wStartAddr, int* uDataLength, BYTE lpData[]);
+
+
+
+
+
+
+/** 
+ * @fn		CRT288x_SL4428CheckPasswd() 
+ * @detail	SL4442 card checking password
+ * @see		...
+ * @param	[in]iMode--operation mode: 1 checking password£¬ 2 modifying password
+ * @param	[in]uDataLength--password length
+ * @param	[in]lpData--checking password (default is£ºFFFFFF)
+ * @return	result, 0 success£¬others except 0 is error.
+ * @exception  note£ºuser must know the password previously modify the data of SLE4442 card£¬ password error counter value will be changed from 7 or less than 7 to 0,    when the counter value is 0, the card will collapse.
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_SL4428CheckPasswd(int iMode, int uDataLength, BYTE lpData[]);
+
+
+
+
+
+/** 
+ * @fn		CRT288x_SL4428Process() 
+ * @detail	SL4428 read/write operation
+ * @see		...
+ * @param	[in]iMode--operation mode   1 read£¬ 2 write
+ * @param	[in]iRegion--operation field   1 main memory, 2 protect bit area£¬
+ * @param	[in]wStartAddr--start position (0x00-0xFF)
+ * @param	[in][out]uDataLength--operation data length (main memory£º0-256£¬ protect bit area£º0-128)
+ * @param	[in][out]lpData--operation data (if the mode is writing, that means inputting. if the mode is reading, that means outputting.)
+ * @return	result, 0 success, others except 0 error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_SL4428Process(int iMode, int iRegion ,WORD wStartAddr, int* uDataLength, BYTE lpData[]);
+
+
+
+
+
+/** 
+ * @fn		CRT288x_24CxProcess() 
+ * @detail	24Cxx card read/write 
+ * @see		...
+ * @param	[in]iMode--operation mode   1 read£¬ 2 write without parity, 3 write with parity
+ * @param	[in]i24CxxType--24Cxx card type. 20 24C01card£¬ 21 24C02card£¬22 24C04card£¬ 23 24C08card£¬ 24 24C16card£¬ 25 24C32card£¬ 26 24C64card
+ * @param	[in]wStartAddr--beginning position (24C01: 0x00-0x07F, 24C02: 0x00-0xFF, 24C04: 0x00-0x01FF, 24C08: 0x00-0x03FF, 24C16: 0x00-0x07FF,
+                                 24C32: 0x00-0x0FFF, 24C64: 0x00-0x1FFF)
+ * @param	[in][out]uDataLength--operational data length
+ * @param	[in][out]lpData--operational data (the mode is 'writing', here inputting. the mode is 'reading', here outputting)
+ * @return	result,0: success£¬others: error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_24CxProcess(int iMode ,WORD wStartAddr, int* uDataLength, BYTE lpData[]);
+
+
+
+
+/** 
+ * @fn		CRT288x_MifareKeyProcess() 
+ * @detail	Mifare card password operation
+ * @see		...
+ * @param	[in]iMode--operation mode   1 check password£¬ 2 download password to EERPROM£¬ 3 modify password
+ * @param	[in]iKs--password type    0 KeyA£¬ 1 KeyB
+ * @param	[in]iSn--sector number  (S50 card sn=00H-0FH, S70 card sn=00H-27H)
+ * @param	[in][uDataLength--operation password length
+ * @param	[in]lpData--operation password data (default£ºFFFFFFFFFFFF)
+ * @return	result, 0 success£¬ others except 0 is error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_MifareKeyProcess(int iMode, int iKs, int iSn, int uDataLength, BYTE lpData[]);
+
+
+
+
+/** 
+ * @fn		CRT288x_MifareCardProcess() 
+  * @detail	Mifare card operation
+ * @see		...
+ * @param	[in]iMode--operation mode   1 read sector block data£¬ 2 write sector block data£¬ 3 S50 S70 initialization£¬4 S50 S70 read balance£¬ 5 S50 S70 increment£¬ 6 S50 S70 decrement
+ * @param	[in]iSn--sector number (Ultralight Card: iSn=00H-0FH, S50 card: iSn=00H-0FH, S70 card: iSn=00H-20H (iSn=21H-27H  S70 card has 16 blocks in every sector among final 8 sectors))
+ * @param	[in]iBn--operate start block (Ultralight Card: iBn=00H, S50 card: iBn=00H-03H, S70 card: iBn=00H-03H  (iBn=00H-0FH   S70 card has 16 blocks in every sector among final 8 sectors))
+ * @param	[in]iLc--operation block number (Ultralight Card: iLc=01H-10H, S50 card: iLc=01H-04H, S70 card: iLc=01H-04H  (iLc=01H-10H   S70 card has 16 blocks in every sector among final 8 sectors))
+ * @param	[in][out]uDataLength--operation data length (S50 S70 initialization£¬when they do increment£¬decrement, those are amount)
+ * @param	[in][out]lpData--operation data (all writing operation means input£¬all reading operation means output)
+ * @return	result, 0 success£¬others except 0 error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int  CRT288x_MifareCardProcess(int iMode, int iSn, int iBn, int iLc, int* uDataLength, BYTE lpData[]);
+
+
+
+
+
+/** 
+ * @fn		CRT288C_GetHidCardNums() 
+ * @detail	get Hid card number
+ * @see		...
+ * @param	[out]szHidCardNums--got Hid card number
+ * @return      result, 0 success£¬others except 0 error.
+ * @exception ...
+ *
+ * @author	luowei
+ * @date	2016/01/06
+ */
+int CRT288C_GetHidCardNums(char szHidCardNums[]);
+
+
+
+#endif 

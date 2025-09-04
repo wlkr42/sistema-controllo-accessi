@@ -1,0 +1,94 @@
+
+<!-- File: /opt/access_control/src/api/templates/hardware_test_section.html -->
+<!-- HTML per sezione test hardware da inserire nella pagina dispositivi -->
+<style>
+    .card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        background: white;
+    }
+    .btn-primary {
+        background: #4c51bf;
+        border-color: #4c51bf;
+    }
+    .btn-primary:hover {
+        background: #434190;
+        border-color: #434190;
+    }
+    .btn-success {
+        background: #2c7a7b;
+        border-color: #2c7a7b;
+    }
+    .btn-success:hover {
+        background: #285e61;
+        border-color: #285e61;
+    }
+    .test-output {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+    }
+    .text-muted {
+        color: #718096 !important;
+    }
+    h3, h4 {
+        color: #2d3748;
+        margin-bottom: 1rem;
+    }
+    .fas {
+        color: #4a5568;
+    }
+</style>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <h3><i class="fas fa-flask"></i> Test Hardware Real-Time</h3>
+            <p class="text-muted">Test funzionamento hardware con feedback visivo in tempo reale</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <h4><i class="fas fa-credit-card"></i> Test Lettore Tessere</h4>
+            <p class="text-muted">Test funzionamento lettore OMNIKEY 5427CK con sequenza APDU</p>
+            
+            <button id="test-reader-btn" class="btn btn-primary mb-3" onclick="startReaderTest()">
+                <i class="fas fa-play"></i> Test Lettore
+            </button>
+            
+            <div id="reader-test-output" class="test-output">
+                <div class="text-muted">
+                    <i class="fas fa-info-circle"></i> Cliccare "Test Lettore" per avviare il test.<br>
+                    Il test verificherà la connessione e la sequenza APDU ISO7816.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <h4><i class="fas fa-microchip"></i> Test Controller USB-RLY08</h4>
+            <p class="text-muted">Test funzionamento controller relè USB-RLY08 con test sicuri</p>
+            
+            <button id="test-relay-btn" class="btn btn-success mb-3" onclick="startRelayTest()">
+                <i class="fas fa-play"></i> Test USB-RLY08
+            </button>
+            
+            <div id="relay-test-output" class="test-output">
+                <div class="text-muted">
+                    <i class="fas fa-info-circle"></i> Cliccare "Test USB-RLY08" per avviare il test.<br>
+                    Il test verificherà connessione e funzionamento relè con lampeggi sicuri.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/hardware_test.js"></script>

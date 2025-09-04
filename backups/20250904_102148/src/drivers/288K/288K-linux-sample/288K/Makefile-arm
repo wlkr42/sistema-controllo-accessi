@@ -1,0 +1,22 @@
+
+
+CC = /opt/buildroot-2011.11/arm926t/usr/bin/arm-linux-gcc
+LDFLAGS = -ldl -g
+CFLAGS  = 
+TAG = crt_288_test
+INC = -I./
+LIB = -L./
+SRC = crt_288_test.c LoadCrt288lib.c  LoadCrt288lib.h
+OBJS = crt_288_test.o LoadCrt288lib.o  
+
+
+
+ALL:$(OBJS)
+	$(CC) $(CFLAGS) -o  $(TAG) $(INC) $(LIB) $(LDFLAGS) $(OBJS)  
+
+%.o:%.c
+	$(CC) -c $< -o $@ $(INC) $(LIB) $(LDFLAGS)
+	
+clean:
+	rm *.o
+

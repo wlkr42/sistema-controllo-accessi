@@ -1,0 +1,58 @@
+<!-- File: /opt/access_control/src/api/static/html/user-menu.html -->
+<!-- Template menu utente da includere nella navbar -->
+
+<div class="user-menu-container">
+    <!-- Trigger Menu -->
+    <div class="user-menu-trigger">
+        <div class="user-avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <div class="user-menu-info">
+            <div class="user-menu-name">{{ session.username }}</div>
+            <div class="user-menu-role">{{ user_role_name }}</div>
+        </div>
+        <i class="fas fa-chevron-down" style="color: white; font-size: 0.8rem;"></i>
+    </div>
+    
+    <!-- Dropdown Menu -->
+    <div class="user-menu-dropdown">
+        <div class="user-menu-header">
+            <div class="avatar-large">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="user-name">{{ session.username }}</div>
+            <div class="user-email">{{ user_role_name }}</div>
+        </div>
+        
+        <div class="user-menu-items">
+            <a href="#" class="user-menu-item" data-action="profile">
+                <i class="fas fa-user-circle"></i>
+                <span class="user-menu-item-text">Il Mio Profilo</span>
+            </a>
+            
+            <a href="#" class="user-menu-item" data-action="change-password">
+                <i class="fas fa-key"></i>
+                <span class="user-menu-item-text">Cambio Password</span>
+            </a>
+            
+            <a href="#" class="user-menu-item" data-action="settings">
+                <i class="fas fa-cog"></i>
+                <span class="user-menu-item-text">Impostazioni</span>
+                {% if session.role == 'admin' %}
+                <span class="notification-badge">New</span>
+                {% endif %}
+            </a>
+            
+            <div class="user-menu-divider"></div>
+            
+            <a href="/logout" class="user-menu-item logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span class="user-menu-item-text">Logout</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Overlay -->
+<div class="user-menu-overlay"></div>
+

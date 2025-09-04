@@ -1,0 +1,312 @@
+<!-- File: /opt/access_control/src/api/static/backup_modal.html -->
+<!-- Modal Gestione Backup -->
+
+<div class="modal fade" id="backupModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-database me-2"></i>Gestione Backup Sistema
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Tab Navigation -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#backup-status">
+                            <i class="fas fa-info-circle"></i> Stato
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#backup-create">
+                            <i class="fas fa-plus-circle"></i> Crea Backup
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#backup-list">
+                            <i class="fas fa-list"></i> Lista Backup
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#backup-settings">
+                            <i class="fas fa-cog"></i> Impostazioni
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content mt-3">
+                    <!-- Tab Stato -->
+                    <div class="tab-pane fade show active" id="backup-status">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-hdd fa-2x text-primary mb-2"></i>
+                                        <h6>Spazio Utilizzato</h6>
+                                        <h4 id="backup-total-size">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-archive fa-2x text-success mb-2"></i>
+                                        <h6>Backup Totali</h6>
+                                        <h4 id="backup-total-count">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                                        <h6>Ultimo Backup</h6>
+                                        <h4 id="backup-last-date">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-chart-pie fa-2x text-info mb-2"></i>
+                                        <h6>Disco Utilizzato</h6>
+                                        <h4 id="backup-disk-usage">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Operazioni in corso -->
+                        <div class="mt-4" id="backup-operations" style="display:none;">
+                            <h6>Operazioni in Corso</h6>
+                            <div id="backup-operations-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Crea Backup -->
+                    <div class="tab-pane fade" id="backup-create">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-archive fa-3x text-primary mb-3"></i>
+                                        <h5>Backup Completo</h5>
+                                        <p class="text-muted">Include codice, configurazioni, database e documentazione</p>
+                                        <button class="btn btn-primary" onclick="createBackup('complete')">
+                                            <i class="fas fa-play me-2"></i>Avvia Backup Completo
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-database fa-3x text-success mb-3"></i>
+                                        <h5>Backup Database</h5>
+                                        <p class="text-muted">Backup rapido solo del database accessi</p>
+                                        <button class="btn btn-success" onclick="createBackup('database')">
+                                            <i class="fas fa-play me-2"></i>Avvia Backup Database
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button class="btn btn-warning" onclick="cleanupBackups()">
+                                <i class="fas fa-broom me-2"></i>Pulizia Backup Vecchi
+                            </button>
+                            <small class="text-muted ms-2">Elimina backup secondo la policy di retention</small>
+                        </div>
+                    </div>
+
+                    <!-- Tab Lista Backup -->
+                    <div class="tab-pane fade" id="backup-list">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Nome File</th>
+                                        <th>Tipo</th>
+                                        <th>Dimensione</th>
+                                        <th>Data</th>
+                                        <th>Età</th>
+                                        <th>Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="backup-list-tbody">
+                                    <tr>
+                                        <td colspan="6" class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Caricamento...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab Impostazioni -->
+                    <div class="tab-pane fade" id="backup-settings">
+                        <form id="backup-settings-form">
+                            <div class="row">
+                                <!-- Backup Automatici -->
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-clock me-2"></i>Backup Automatici</h6>
+                                    
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="auto-backup-enabled">
+                                        <label class="form-check-label" for="auto-backup-enabled">
+                                            Abilita backup automatici
+                                        </label>
+                                    </div>
+                                    
+                                    <div id="auto-backup-options">
+                                        <!-- Giornaliero -->
+                                        <div class="card mb-2">
+                                            <div class="card-body">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="daily-backup-enabled">
+                                                    <label class="form-check-label" for="daily-backup-enabled">
+                                                        Backup giornaliero database
+                                                    </label>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <label>Orario:</label>
+                                                    <input type="time" class="form-control form-control-sm" id="daily-backup-time" value="02:00">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Settimanale -->
+                                        <div class="card mb-2">
+                                            <div class="card-body">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="weekly-backup-enabled">
+                                                    <label class="form-check-label" for="weekly-backup-enabled">
+                                                        Backup settimanale completo
+                                                    </label>
+                                                </div>
+                                                <div class="row mt-2">
+                                                    <div class="col">
+                                                        <label>Giorno:</label>
+                                                        <select class="form-select form-select-sm" id="weekly-backup-day">
+                                                            <option value="0">Domenica</option>
+                                                            <option value="1">Lunedì</option>
+                                                            <option value="2">Martedì</option>
+                                                            <option value="3">Mercoledì</option>
+                                                            <option value="4">Giovedì</option>
+                                                            <option value="5">Venerdì</option>
+                                                            <option value="6">Sabato</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col">
+                                                        <label>Orario:</label>
+                                                        <input type="time" class="form-control form-control-sm" id="weekly-backup-time" value="03:00">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Retention Policy -->
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-history me-2"></i>Policy di Retention</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label>Mantieni backup giornalieri per:</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="daily-retention" min="1" max="30" value="7">
+                                            <span class="input-group-text">giorni</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label>Mantieni backup settimanali per:</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="weekly-retention" min="1" max="52" value="4">
+                                            <span class="input-group-text">settimane</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label>Mantieni backup mensili per:</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="monthly-retention" min="1" max="24" value="6">
+                                            <span class="input-group-text">mesi</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label>Limite spazio totale backup:</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="max-backup-size" min="1" max="100" value="10">
+                                            <span class="input-group-text">GB</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="text-end">
+                                <button type="button" class="btn btn-secondary" onclick="loadBackupConfig()">
+                                    <i class="fas fa-undo me-2"></i>Ripristina
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Salva Impostazioni
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.backup-operation {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.backup-operation.running {
+    border-color: #0d6efd;
+    background-color: #e7f1ff;
+}
+
+.backup-operation.completed {
+    border-color: #198754;
+    background-color: #d1e7dd;
+}
+
+.backup-operation.error {
+    border-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.backup-file-actions button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+#backup-settings-form .card {
+    background-color: #f8f9fa;
+}
+
+.progress {
+    height: 25px;
+}
+
+.progress-bar {
+    font-size: 0.9rem;
+    line-height: 25px;
+}
+</style>

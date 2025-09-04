@@ -1,0 +1,7 @@
+{
+  "mappings": {
+    "80380001800322426041": "RSSMRA80A01H501Z",
+    "comment": "Mappatura temporanea numero tessera -> CF per test. In produzione serve lettura chip IC"
+  },
+  "note": "Le tessere sanitarie italiane memorizzano il CF nel chip, non nella banda magnetica. Questa è una soluzione temporanea."
+}

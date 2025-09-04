@@ -1,0 +1,807 @@
+# File: /opt/access_control/src/api/hardware_detection.py
+# Modulo per il rilevamento automatico e preciso dell'hardware collegato
+
+import os
+import re
+import json
+import subprocess
+import logging
+from typing import Dict, List, Any, Optional, Tuple
+
+# Configurazione del logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Database hardware con identificazione precisa
+HARDWARE_DATABASE = {
+    # Lettori tessere OMNIKEY
+    "0x076b:0x5427": {
+        "type": "card_reader",
+        "name": "HID OMNIKEY 5427CK",
+        "manufacturer": "HID Global",
+        "description": "Lettore tessere sanitarie PC/SC compatibile",
+        "connection": "USB-CDC",
+        "default_config": {
+            "reader_type": "pcsc",
+            "timeout": 30,
+            "auto_detect": True
+        }
+    },
+    "0x076b:0x5321": {
+        "type": "card_reader", 
+        "name": "HID OMNIKEY 5321",
+        "manufacturer": "HID Global",
+        "description": "Lettore tessere contactless",
+        "connection": "USB-CDC",
+        "default_config": {
+            "reader_type": "pcsc",
+            "timeout": 30,
+            "auto_detect": True
+        }
+    },
+    
+    # Lettori tessere CREATOR(CHINA)TECH - CRT-288 Series
+    "0x23d8:0x0285": {
+        "type": "card_reader",
+        "name": "CREATOR CRT-285/288x",
+        "manufacturer": "CREATOR(CHINA)TECH CO.,LTD",
+        "description": "Lettore tessere magnetiche/IC/RFID CRT-288 Series",
+        "connection": "USB",
+        "default_config": {
+            "reader_type": "crt288x",
+            "timeout": 30,
+            "supports_magnetic": True,
+            "supports_ic_contact": True,
+            "supports_rfid": True,
+            "led_control": True,
+            "protocol": "crt288x_native"
+        }
+    },
+    
+    # Controller relè Devantech
+    "0x0403:0x6001": {
+        "type": "relay",
+        "name": "Devantech USB-RLY08",
+        "manufacturer": "Devantech Ltd.",
+        "description": "Controller 8 relè USB",
+        "connection": "USB-Serial",
+        "default_config": {
+            "baud_rate": 19200,
+            "relay_count": 8,
+            "gate_duration": 8.0,
+            "protocol": "devantech"
+        }
+    },
+    
+    # Lettori tessere generici
+    "generic_card_reader": {
+        "vendor_patterns": ["ACS", "SCM", "Gemalto", "Identiv", "Cherry", "CREATOR", "CRT"],
+        "product_patterns": ["ACR", "SCR", "Reader", "Smart", "Card", "CRT-285", "CRT-288", "285", "288"],
+        "type": "card_reader",
+        "name": "Lettore Tessere Generico",
+        "description": "Lettore tessere RFID/NFC generico",
+        "connection": "USB",
+        "default_config": {
+            "reader_type": "generic",
+            "timeout": 30,
+            "auto_detect": True
+        }
+    },
+    
+    # Controller relè generici  
+    "generic_relay": {
+        "vendor_patterns": ["FTDI", "Prolific", "Silicon"],
+        "product_patterns": ["USB-RLY", "Relay", "Controller", "Switch"],
+        "type": "relay",
+        "name": "Controller Relè Generico",
+        "description": "Controller relè USB/Seriale generico",
+        "connection": "USB-Serial", 
+        "default_config": {
+            "baud_rate": 9600,
+            "relay_count": 1,
+            "gate_duration": 5.0,
+            "protocol": "generic"
+        }
+    },
+    
+    # Dispositivi seriali Arduino/ESP
+    "generic_arduino": {
+        "vendor_patterns": ["Arduino", "ESP32", "CH340", "CP210"],
+        "product_patterns": ["Arduino", "ESP32", "USB-Serial", "UART"],
+        "type": "sensor",
+        "name": "Dispositivo Arduino/ESP",
+        "description": "Microcontrollore programmabile",
+        "connection": "USB-Serial",
+        "default_config": {
+            "baud_rate": 115200,
+            "protocol": "custom"
+        }
+    }
+}
+
+def get_device_unique_id(device: Dict[str, Any]) -> str:
+    """
+    Genera un ID univoco per il dispositivo basato su vendor:product
+    
+    Args:
+        device (Dict[str, Any]): Informazioni dispositivo
+        
+    Returns:
+        str: ID univoco del dispositivo
+    """
+    vendor_id = device.get('vendor_id', '').lower()
+    product_id = device.get('product_id', '').lower()
+    
+    if vendor_id and product_id:
+        return f"{vendor_id}:{product_id}"
+    
+    return None
+
+def identify_hardware_precisely(device: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Identifica l'hardware in modo preciso usando il database
+    
+    Args:
+        device (Dict[str, Any]): Informazioni dispositivo rilevato
+        
+    Returns:
+        Dict[str, Any]: Informazioni hardware identificato
+    """
+    # Prima prova identificazione precisa con vendor:product ID
+    device_id = get_device_unique_id(device)
+    if device_id and device_id in HARDWARE_DATABASE:
+        hardware_info = HARDWARE_DATABASE[device_id].copy()
+        hardware_info['identification_method'] = 'precise_id'
+        hardware_info['confidence'] = 100
+        return hardware_info
+    
+    # Seconda prova con pattern generici
+    vendor_name = device.get('vendor_name', '').lower()
+    product_name = device.get('product_name', '').lower()
+    description = device.get('description', '').lower()
+    
+    combined_text = f"{vendor_name} {product_name} {description}"
+    
+    for generic_key, hardware_info in HARDWARE_DATABASE.items():
+        if not generic_key.startswith('generic_'):
+            continue
+            
+        vendor_patterns = hardware_info.get('vendor_patterns', [])
+        product_patterns = hardware_info.get('product_patterns', [])
+        
+        # Controlla pattern vendor
+        vendor_match = any(pattern.lower() in combined_text for pattern in vendor_patterns)
+        # Controlla pattern product
+        product_match = any(pattern.lower() in combined_text for pattern in product_patterns)
+        
+        if vendor_match or product_match:
+            result = hardware_info.copy()
+            result['identification_method'] = 'pattern_match'
+            result['confidence'] = 80 if (vendor_match and product_match) else 60
+            return result
+    
+    # Fallback: dispositivo sconosciuto
+    return {
+        'type': 'unknown',
+        'name': 'Dispositivo Sconosciuto',
+        'manufacturer': device.get('vendor_name', 'Sconosciuto'),
+        'description': f"Dispositivo non riconosciuto: {device.get('description', 'N/A')}",
+        'connection': 'USB',
+        'identification_method': 'unknown',
+        'confidence': 0,
+        'default_config': {}
+    }
+
+def detect_usb_devices_with_ports() -> List[Dict[str, Any]]:
+    """
+    Rileva dispositivi USB e mappa automaticamente alle loro porte
+    
+    Returns:
+        List[Dict[str, Any]]: Lista dispositivi con porte mappate
+    """
+    devices = []
+    
+    try:
+        # Esegui lsusb base
+        result = subprocess.run(['lsusb'], 
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE,
+                               text=True,
+                               timeout=10)
+        
+        if result.returncode != 0:
+            logger.error(f"Errore lsusb: {result.stderr}")
+            return devices
+        
+        # Parse dispositivi base
+        usb_devices = {}
+        for line in result.stdout.splitlines():
+            match = re.search(r'Bus (\d+) Device (\d+): ID (\w+):(\w+) (.*)', line)
+            if match:
+                bus, device, vendor_id, product_id, description = match.groups()
+                device_key = f"{bus}:{device}"
+                
+                usb_devices[device_key] = {
+                    'bus': bus,
+                    'device': device,
+                    'vendor_id': f"0x{vendor_id}",
+                    'product_id': f"0x{product_id}",
+                    'description': description.strip(),
+                    'vendor_name': '',
+                    'product_name': '',
+                    'serial': '',
+                    'port': None
+                }
+        
+        # Ottieni dettagli con lsusb -v (limitato per performance)
+        try:
+            result_verbose = subprocess.run(['lsusb', '-v'], 
+                                          stdout=subprocess.PIPE, 
+                                          stderr=subprocess.PIPE,
+                                          text=True,
+                                          timeout=20)
+            
+            if result_verbose.returncode == 0:
+                current_device = None
+                for line in result_verbose.stdout.splitlines():
+                    # Nuovo dispositivo
+                    bus_device_match = re.search(r'Bus (\d+) Device (\d+):', line)
+                    if bus_device_match:
+                        bus, device = bus_device_match.groups()
+                        device_key = f"{bus}:{device}"
+                        current_device = usb_devices.get(device_key)
+                        continue
+                    
+                    if current_device:
+                        if 'iManufacturer' in line:
+                            match = re.search(r'iManufacturer\s+\d+\s+(.*)', line)
+                            if match:
+                                current_device['vendor_name'] = match.group(1).strip()
+                        
+                        elif 'iProduct' in line:
+                            match = re.search(r'iProduct\s+\d+\s+(.*)', line)
+                            if match:
+                                current_device['product_name'] = match.group(1).strip()
+                        
+                        elif 'iSerial' in line:
+                            match = re.search(r'iSerial\s+\d+\s+(.*)', line)
+                            if match:
+                                current_device['serial'] = match.group(1).strip()
+        
+        except Exception as e:
+            logger.warning(f"Errore lsusb verbose: {str(e)}")
+        
+        # MAPPATURA AUTOMATICA PORTE - Questo è il punto cruciale!
+        port_mappings = auto_map_usb_to_ports()
+        
+        # Applica mappature e identifica hardware
+        for device_key, device in usb_devices.items():
+            # Cerca porta corrispondente
+            device_port = None
+            for port, port_info in port_mappings.items():
+                if (device['vendor_id'].lower() == port_info.get('vendor_id', '').lower() and
+                    device['product_id'].lower() == port_info.get('product_id', '').lower()):
+                    device_port = port
+                    break
+            
+            device['port'] = device_port
+            
+            # Identifica hardware con precisione
+            hardware_info = identify_hardware_precisely(device)
+            
+            # Combina info dispositivo e hardware
+            final_device = {
+                **device,
+                **hardware_info,
+                'detected_at': device_port,
+                'usb_info': {
+                    'bus': device['bus'],
+                    'device': device['device'],
+                    'vendor_id': device['vendor_id'],
+                    'product_id': device['product_id']
+                }
+            }
+            
+            # Filtra dispositivi di sistema
+            if not is_system_device(final_device):
+                devices.append(final_device)
+        
+        return devices
+    
+    except Exception as e:
+        logger.error(f"Errore rilevamento USB: {str(e)}")
+        return devices
+
+def auto_map_usb_to_ports() -> Dict[str, Dict[str, Any]]:
+    """
+    Mappa automaticamente dispositivi USB alle loro porte seriali
+    Questa è la funzione chiave per evitare conflitti!
+    
+    Returns:
+        Dict[str, Dict[str, Any]]: Mappatura porta -> info USB
+    """
+    mappings = {}
+    
+    # Metodo 1: /dev/serial/by-id (più affidabile)
+    try:
+        result = subprocess.run(['ls', '-la', '/dev/serial/by-id/'], 
+                              stdout=subprocess.PIPE, 
+                              stderr=subprocess.PIPE,
+                              text=True,
+                              timeout=5)
+        
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                if '->' in line and 'usb-' in line:
+                    # Pattern: usb-HID_Global_OMNIKEY_5x27_CK_12345678-if00-port0 -> ../../ttyACM0
+                    match = re.search(r'usb-([^_]+)_(.+?)(?:_if\d+)?-port\d+ -> \.\.\/\.\.\/(.+)', line)
+                    if match:
+                        vendor_part, product_part, port_name = match.groups()
+                        full_port = f"/dev/{port_name}"
+                        
+                        # Estrai vendor e product ID se presenti nel nome
+                        vendor_id = extract_id_from_name(vendor_part)
+                        product_id = extract_id_from_name(product_part)
+                        
+                        mappings[full_port] = {
+                            'vendor_name': vendor_part.replace('_', ' '),
+                            'product_name': product_part.replace('_', ' '),
+                            'vendor_id': vendor_id,
+                            'product_id': product_id,
+                            'mapping_method': 'by-id'
+                        }
+        
+    except Exception as e:
+        logger.warning(f"Errore mappatura by-id: {str(e)}")
+    
+    # Metodo 2: /dev/serial/by-path (backup)
+    try:
+        result = subprocess.run(['ls', '-la', '/dev/serial/by-path/'], 
+                              stdout=subprocess.PIPE, 
+                              stderr=subprocess.PIPE,
+                              text=True,
+                              timeout=5)
+        
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                if '->' in line and 'usb' in line:
+                    match = re.search(r'pci[^-]+-usb[^-]+-([^:]+):([^.]+)\.\d+-port\d+ -> \.\.\/\.\.\/(.+)', line)
+                    if match:
+                        vendor_id, product_id, port_name = match.groups()
+                        full_port = f"/dev/{port_name}"
+                        
+                        # Solo se non già mappato con metodo più preciso
+                        if full_port not in mappings:
+                            mappings[full_port] = {
+                                'vendor_id': f"0x{vendor_id}",
+                                'product_id': f"0x{product_id}",
+                                'mapping_method': 'by-path'
+                            }
+    
+    except Exception as e:
+        logger.warning(f"Errore mappatura by-path: {str(e)}")
+    
+    return mappings
+
+def extract_id_from_name(name_part: str) -> str:
+    """Estrae ID esadecimale da nome dispositivo se presente"""
+    hex_match = re.search(r'([0-9a-fA-F]{4})', name_part)
+    return f"0x{hex_match.group(1)}" if hex_match else ""
+
+def is_system_device(device: Dict[str, Any]) -> bool:
+    """
+    Determina se un dispositivo è un dispositivo di sistema da filtrare
+    
+    Args:
+        device (Dict[str, Any]): Info dispositivo
+        
+    Returns:
+        bool: True se è dispositivo di sistema
+    """
+    description = device.get('description', '').lower()
+    product_name = device.get('product_name', '').lower()
+    vendor_name = device.get('vendor_name', '').lower()
+    
+    system_keywords = [
+        'linux foundation', 'xhci', 'ehci', 'ohci', 'uhci',
+        'root hub', 'host controller', 'hub', 'bluetooth',
+        'wireless', 'wifi', 'ethernet', 'audio', 'camera',
+        'keyboard', 'mouse', 'touchpad'
+    ]
+    
+    combined = f"{description} {product_name} {vendor_name}"
+    return any(keyword in combined for keyword in system_keywords)
+
+def detect_serial_ports_status() -> List[Dict[str, Any]]:
+    """
+    Rileva status delle porte seriali esistenti
+    
+    Returns:
+        List[Dict[str, Any]]: Lista porte seriali con status
+    """
+    ports = []
+    
+    # Rileva tutte le porte tty*
+    for pattern in ['/dev/ttyUSB*', '/dev/ttyACM*', '/dev/ttyS[0-9]*']:
+        try:
+            result = subprocess.run(f'ls {pattern}', 
+                                  stdout=subprocess.PIPE, 
+                                  stderr=subprocess.PIPE,
+                                  text=True,
+                                  shell=True,
+                                  timeout=5)
+            
+            if result.returncode == 0:
+                for port in result.stdout.strip().split():
+                    if port:
+                        port_info = {
+                            'port': port,
+                            'available': False,
+                            'error': '',
+                            'in_use': False
+                        }
+                        
+                        # Test disponibilità
+                        try:
+                            test_result = subprocess.run(['stty', '-F', port, 'size'], 
+                                                       stdout=subprocess.PIPE, 
+                                                       stderr=subprocess.PIPE,
+                                                       text=True,
+                                                       timeout=2)
+                            
+                            if test_result.returncode == 0:
+                                port_info['available'] = True
+                            else:
+                                port_info['error'] = test_result.stderr.strip()
+                                # Porta potrebbe essere in uso
+                                if 'resource busy' in port_info['error'].lower():
+                                    port_info['in_use'] = True
+                        
+                        except Exception as e:
+                            port_info['error'] = str(e)
+                        
+                        ports.append(port_info)
+        
+        except Exception as e:
+            logger.debug(f"Pattern {pattern} non trovato: {str(e)}")
+    
+    return ports
+
+def get_hardware_info() -> Dict[str, Any]:
+    """
+    Funzione principale: rileva tutto l'hardware con identificazione precisa
+    
+    Returns:
+        Dict[str, Any]: Hardware rilevato con identificazione automatica
+    """
+    try:
+        logger.info("Avvio rilevamento hardware preciso...")
+        
+        # Rileva dispositivi USB con mappatura porte automatica
+        usb_hardware = detect_usb_devices_with_ports()
+        
+        # Rileva status porte seriali
+        serial_ports = detect_serial_ports_status()
+        
+        # Raggruppa per tipo hardware (ora identificato automaticamente!)
+        hardware_by_type = {
+            'card_reader': [],
+            'relay': [],
+            'sensor': [],
+            'unknown': []
+        }
+        
+        # Aggiungi hardware identificato
+        for hardware in usb_hardware:
+            hw_type = hardware.get('type', 'unknown')
+            if hw_type in hardware_by_type:
+                hardware_by_type[hw_type].append(hardware)
+            else:
+                hardware_by_type['unknown'].append(hardware)
+        
+        # Trova porte seriali non associate a hardware USB
+        used_ports = {hw.get('detected_at') for hw in usb_hardware if hw.get('detected_at')}
+        orphan_ports = [port for port in serial_ports if port['port'] not in used_ports]
+        
+        # Aggiungi porte orfane come hardware sconosciuto
+        for port in orphan_ports:
+            # Salta porte seriali standard senza info aggiuntive
+            if port['port'].startswith('/dev/ttyS') and not port.get('vendor_info'):
+                continue
+                
+            hardware_by_type['unknown'].append({
+                'type': 'unknown',
+                'name': f"Porta Seriale {port['port']}",
+                'description': f"Porta seriale non associata a hardware USB",
+                'detected_at': port['port'],
+                'port': port['port'],
+                'available': port['available'],
+                'error': port.get('error', ''),
+                'connection': 'Serial',
+                'identification_method': 'serial_only',
+                'confidence': 0
+            })
+        
+        # Statistiche
+        total_hardware = sum(len(devices) for devices in hardware_by_type.values())
+        identified_hardware = sum(len(devices) for type_name, devices in hardware_by_type.items() if type_name != 'unknown')
+        
+        stats = {
+            'total_hardware': total_hardware,
+            'identified_hardware': identified_hardware,
+            'unknown_hardware': len(hardware_by_type['unknown']),
+            'available_ports': len([hw for hw_list in hardware_by_type.values() for hw in hw_list if hw.get('available', False)]),
+            'identification_rate': round((identified_hardware / total_hardware * 100) if total_hardware > 0 else 0, 1)
+        }
+        
+        logger.info(f"Rilevamento completato: {total_hardware} dispositivi, {identified_hardware} identificati ({stats['identification_rate']}%)")
+        
+        return {
+            'success': True,
+            'hardware_by_type': hardware_by_type,
+            'stats': stats,
+            'hardware_database': {k: v for k, v in HARDWARE_DATABASE.items() if not k.startswith('generic_')},
+            'message': f"Rilevati {total_hardware} dispositivi hardware, {identified_hardware} identificati automaticamente"
+        }
+    
+    except Exception as e:
+        logger.error(f"Errore rilevamento hardware: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def test_hardware_connection(hardware_type: str, device_path: str, **kwargs) -> Dict[str, Any]:
+    """
+    Testa connessione hardware con configurazione automatica
+    
+    Args:
+        hardware_type (str): Tipo hardware identificato
+        device_path (str): Porta del dispositivo  
+        **kwargs: Parametri aggiuntivi
+        
+    Returns:
+        Dict[str, Any]: Risultato test
+    """
+    try:
+        if not os.path.exists(device_path):
+            return {
+                'success': False,
+                'error': f'Dispositivo {device_path} non trovato'
+            }
+        
+        # Test base connessione porta
+        try:
+            result = subprocess.run(['stty', '-F', device_path, 'size'], 
+                                  stdout=subprocess.PIPE, 
+                                  stderr=subprocess.PIPE,
+                                  text=True,
+                                  timeout=5)
+            
+            port_accessible = result.returncode == 0
+            port_error = result.stderr if result.returncode != 0 else None
+        
+        except Exception as e:
+            port_accessible = False
+            port_error = str(e)
+        
+        # Test specifico per tipo hardware
+        hardware_test = {}
+        
+        if hardware_type == 'card_reader':
+            hardware_test = test_card_reader_connection(device_path)
+        elif hardware_type == 'relay':
+            hardware_test = test_relay_connection(device_path, **kwargs)
+        elif hardware_type == 'sensor':
+            hardware_test = test_sensor_connection(device_path, **kwargs)
+        else:
+            hardware_test = {'test_type': 'generic', 'message': 'Test generico completato'}
+        
+        return {
+            'success': port_accessible,
+            'port_accessible': port_accessible,
+            'port_error': port_error,
+            'hardware_test': hardware_test,
+            'device_path': device_path,
+            'hardware_type': hardware_type
+        }
+    
+    except Exception as e:
+        logger.error(f"Errore test hardware: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def test_card_reader_connection(device_path: str) -> Dict[str, Any]:
+    """Test specifico lettori tessere"""
+    try:
+        # Determina tipo lettore dal path del dispositivo se disponibile  
+        reader_type = "generic"
+        
+        # Test PC/SC generico
+        pcsc_result = test_pcsc_reader()
+        
+        # Test CRT-288 specifico se presente
+        crt288_result = test_crt288_reader(device_path)
+        
+        # Combina risultati
+        test_result = {
+            'test_type': 'card_reader',
+            'pcsc_test': pcsc_result,
+            'crt288_test': crt288_result,
+            'message': 'Test lettore completato'
+        }
+        
+        # Determina successo complessivo
+        if pcsc_result.get('available') or crt288_result.get('available'):
+            test_result['success'] = True
+            test_result['message'] = 'Lettore tessere operativo'
+        else:
+            test_result['success'] = False
+            test_result['message'] = 'Nessun lettore funzionante trovato'
+        
+        return test_result
+    
+    except Exception as e:
+        return {
+            'test_type': 'card_reader',
+            'error': str(e),
+            'message': 'Test lettore fallito'
+        }
+
+def test_pcsc_reader() -> Dict[str, Any]:
+    """Test lettore PC/SC standard"""
+    try:
+        result = subprocess.run(['pcsc_scan', '-n'], 
+                              stdout=subprocess.PIPE, 
+                              stderr=subprocess.PIPE,
+                              text=True,
+                              timeout=10)
+        
+        return {
+            'available': result.returncode == 0,
+            'output': result.stdout[:200] if result.stdout else '',
+            'error': result.stderr[:200] if result.stderr else ''
+        }
+    
+    except Exception as e:
+        return {
+            'available': False,
+            'error': str(e)
+        }
+
+def test_crt288_reader(device_path: str) -> Dict[str, Any]:
+    """Test specifico per lettore CRT-288"""
+    try:
+        # Controlla se esiste il driver CRT-288
+        crt288_lib_paths = [
+            '/usr/local/lib/libcrt_288x_ur.so',
+            '/opt/access_control/drivers/288K/libcrt_288x_ur.so',
+            './drivers/288K/libcrt_288x_ur.so'
+        ]
+        
+        lib_found = False
+        lib_path = None
+        for path in crt288_lib_paths:
+            if os.path.exists(path):
+                lib_found = True
+                lib_path = path
+                break
+        
+        if not lib_found:
+            return {
+                'available': False,
+                'error': 'Driver CRT-288 non trovato',
+                'driver_paths_checked': crt288_lib_paths
+            }
+        
+        # Test eseguibile se disponibile
+        test_executables = [
+            '/opt/access_control/drivers/288K/288K-linux-sample/288K/crt_288_test',
+            './drivers/288K/288K-linux-sample/288K/crt_288_test'
+        ]
+        
+        test_exe = None
+        for exe_path in test_executables:
+            if os.path.exists(exe_path) and os.access(exe_path, os.X_OK):
+                test_exe = exe_path
+                break
+        
+        if test_exe:
+            # Esegue test rapido (solo connessione, non interattivo)
+            result = subprocess.run([test_exe], 
+                                  input="0\n",  # quit subito
+                                  stdout=subprocess.PIPE, 
+                                  stderr=subprocess.PIPE,
+                                  text=True,
+                                  timeout=5)
+            
+            return {
+                'available': True,
+                'driver_path': lib_path,
+                'test_executable': test_exe,
+                'test_output': result.stdout[:200] if result.stdout else '',
+                'quick_test': 'completed'
+            }
+        else:
+            return {
+                'available': True,
+                'driver_path': lib_path,
+                'test_executable': None,
+                'note': 'Driver disponibile ma test executable non trovato'
+            }
+    
+    except Exception as e:
+        return {
+            'available': False,
+            'error': str(e)
+        }
+
+def test_relay_connection(device_path: str, **kwargs) -> Dict[str, Any]:
+    """Test specifico controller relè"""
+    try:
+        baud_rate = kwargs.get('baud_rate', 19200)
+        
+        # Configura porta per comunicazione relè
+        result = subprocess.run([
+            'stty', '-F', device_path, 
+            str(baud_rate), 'cs8', '-parenb', '-cstopb', 'raw'
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+        
+        return {
+            'test_type': 'relay',
+            'configuration_success': result.returncode == 0,
+            'baud_rate': baud_rate,
+            'message': f'Controller relè configurato (baud: {baud_rate})'
+        }
+    
+    except Exception as e:
+        return {
+            'test_type': 'relay',
+            'error': str(e),
+            'message': 'Test controller relè fallito'
+        }
+
+def test_sensor_connection(device_path: str, **kwargs) -> Dict[str, Any]:
+    """Test specifico sensore/Arduino"""
+    try:
+        baud_rate = kwargs.get('baud_rate', 115200)
+        
+        result = subprocess.run([
+            'stty', '-F', device_path, 
+            str(baud_rate), 'cs8', '-parenb', '-cstopb'
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+        
+        return {
+            'test_type': 'sensor',
+            'configuration_success': result.returncode == 0,
+            'baud_rate': baud_rate,
+            'message': f'Sensore/Arduino configurato (baud: {baud_rate})'
+        }
+    
+    except Exception as e:
+        return {
+            'test_type': 'sensor',
+            'error': str(e),
+            'message': 'Test sensore fallito'
+        }
+
+# Compatibilità API
+def detect_hardware() -> Dict[str, Any]:
+    """Funzione principale per API"""
+    return get_hardware_info()
+
+def load_hardware_config(get_db_connection) -> Dict[str, Any]:
+    """Carica configurazione (ora gestita automaticamente)"""
+    return {
+        'success': True,
+        'message': 'Configurazione gestita automaticamente dal rilevamento hardware'
+    }
+
+def save_hardware_config(config_data: Dict[str, Any], get_db_connection) -> Dict[str, Any]:
+    """Salva configurazione (placeholder per compatibilità)"""
+    return {
+        'success': True,
+        'message': 'Hardware configurato automaticamente'
+    }
