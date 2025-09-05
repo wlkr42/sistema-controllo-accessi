@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 
 class RelayChannel(Enum):
     """Mapping canali relè per funzionalità specifiche"""
-    LED_GREEN = 1      # LED Verde - Accesso autorizzato
-    LED_RED = 2        # LED Rosso - Accesso negato
-    BUZZER = 3         # Buzzer - Segnalazioni acustiche
-    GATE_MOTOR = 4     # Motore cancello - Apertura/Chiusura
-    MAGNETIC_LOCK = 5  # Blocco elettromagnetico
-    AREA_LIGHT = 6     # Illuminazione area RAEE
-    SPARE_1 = 7        # Relè di riserva 1
-    SPARE_2 = 8        # Relè di riserva 2
+    GATE_MOTOR = 1     # RLY1 - Motore cancello - Apertura/Chiusura
+    LED_RED = 2        # RLY2 - LED Rosso - Accesso negato
+    BUZZER = 3         # RLY3 - Buzzer - Segnalazioni acustiche
+    LED_GREEN = 4      # RLY4 - LED Verde - Accesso autorizzato
+    MAGNETIC_LOCK = 5  # RLY5 - Blocco elettromagnetico
+    AREA_LIGHT = 6     # RLY6 - Illuminazione area RAEE
+    SPARE_1 = 7        # RLY7 - Relè di riserva 1
+    SPARE_2 = 8        # RLY8 - Relè di riserva 2
 
 class USBRLY08Controller:
     """Controller USB-RLY08 per sistema controllo accessi RAEE"""

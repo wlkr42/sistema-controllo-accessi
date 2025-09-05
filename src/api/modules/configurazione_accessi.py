@@ -445,7 +445,7 @@ def verifica_limite_mensile(codice_fiscale: str) -> bool:
         cursor.execute('''
             SELECT numero_ingressi FROM conteggio_ingressi_mensili 
             WHERE codice_fiscale = ? AND mese = ? AND anno = ?
-        ''', (codice_fiscale, oggi.year, oggi.month))
+        ''', (codice_fiscale, oggi.month, oggi.year))
         
         row = cursor.fetchone()
         accessi = row[0] if row else 0

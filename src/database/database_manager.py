@@ -111,6 +111,40 @@ class DatabaseManager:
                     )
                 ''')
                 
+                # Tabella configurazione relè
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS relay_config (
+                        relay_number INTEGER PRIMARY KEY CHECK (relay_number BETWEEN 1 AND 8),
+                        description TEXT NOT NULL,
+                        valid_action TEXT CHECK (valid_action IN ('OFF', 'ON', 'PULSE')),
+                        valid_duration REAL DEFAULT 0,
+                        invalid_action TEXT CHECK (invalid_action IN ('OFF', 'ON', 'PULSE')),
+                        invalid_duration REAL DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_by TEXT
+                    )
+                ''')
+                
+                # Inserisci configurazione di default se la tabella è vuota
+                cursor.execute('SELECT COUNT(*) FROM relay_config')
+                if cursor.fetchone()[0] == 0:
+                    default_configs = [
+                        (1, 'Motore Cancello', 'PULSE', 5.0, 'OFF', 0),
+                        (2, 'LED Rosso', 'OFF', 0, 'PULSE', 3.0),
+                        (3, 'Buzzer', 'PULSE', 0.5, 'PULSE', 2.0),
+                        (4, 'LED Verde', 'PULSE', 3.0, 'OFF', 0),
+                        (5, 'Blocco Magnetico', 'OFF', 5.0, 'ON', 0),
+                        (6, 'Illuminazione', 'ON', 10.0, 'OFF', 0),
+                        (7, 'Riserva 1', 'OFF', 0, 'OFF', 0),
+                        (8, 'Riserva 2', 'OFF', 0, 'OFF', 0)
+                    ]
+                    cursor.executemany('''
+                        INSERT INTO relay_config 
+                        (relay_number, description, valid_action, valid_duration, invalid_action, invalid_duration) 
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', default_configs)
+                
                 # Indici per performance
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_cf ON utenti_autorizzati(codice_fiscale)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_cf_attivo ON utenti_autorizzati(codice_fiscale, attivo)')

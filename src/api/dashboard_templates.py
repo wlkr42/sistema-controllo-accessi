@@ -206,6 +206,9 @@ def get_dashboard_template():
                             {% endfor %}
                             
                             <!-- Menu items fissi -->
+                            <a href="/log-accessi" class="btn btn-outline-warning">
+                                <i class="fas fa-history"></i> Log Accessi
+                            </a>
                             <a href="/admin/config" class="btn btn-outline-primary">
                                 <i class="fas fa-sliders-h"></i> Configurazioni Sistema
                             </a>
@@ -609,6 +612,11 @@ ADMIN_CONFIG_TEMPLATE = """
                     <i class="fas fa-bug"></i> Debug
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#orologio">
+                    <i class="fas fa-clock"></i> Orologio
+                </a>
+            </li>
         </ul>
 
         <!-- Tab Content -->
@@ -697,6 +705,44 @@ ADMIN_CONFIG_TEMPLATE = """
                         <div id="hardware-list" class="mt-3"></div>
                     </div>
                 </div>
+                
+                <!-- Configurazione Relè -->
+                <div class="card mt-3">
+                    <div class="card-header bg-warning text-dark">
+                        <h5><i class="fas fa-toggle-on me-2"></i>Configurazione Relè USB-RLY08</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Configura il comportamento di ogni relè quando viene letta una tessera valida o non valida.
+                        </div>
+                        <form id="relay-config-form">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Relè</th>
+                                            <th>Descrizione</th>
+                                            <th>CF Valido</th>
+                                            <th>Durata (sec)</th>
+                                            <th>CF Non Valido</th>
+                                            <th>Durata (sec)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="relay-config-tbody">
+                                        <!-- Righe generate dinamicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="saveRelayConfig()">
+                                <i class="fas fa-save"></i> Salva Configurazione Relè
+                            </button>
+                            <button type="button" class="btn btn-info ms-2" onclick="testRelayConfig()">
+                                <i class="fas fa-vial"></i> Test Configurazione
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
             <!-- Sicurezza -->
@@ -748,6 +794,9 @@ ADMIN_CONFIG_TEMPLATE = """
                         <div class="mb-3">
                             <button id="toggle-log" class="btn btn-primary">
                                 <i class="fas fa-play"></i> Avvia Log
+                            </button>
+                            <button id="pause-log" class="btn btn-info" style="display: none;">
+                                <i class="fas fa-pause"></i> Pausa
                             </button>
                             <button id="clear-log" class="btn btn-secondary">
                                 <i class="fas fa-eraser"></i> Pulisci
@@ -844,6 +893,78 @@ ADMIN_CONFIG_TEMPLATE = """
                     </div>
                 </div>
             </div>
+            
+            <!-- Orologio -->
+            <div class="tab-pane fade" id="orologio">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-clock me-2"></i>Configurazioni Orologio</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="orologio-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Fuso Orario</label>
+                                        <select class="form-select" id="timezone">
+                                            <option value="UTC">UTC (Coordinated Universal Time)</option>
+                                            <option value="Europe/Rome" selected>Europe/Rome (Italia)</option>
+                                            <option value="Europe/London">Europe/London (UK)</option>
+                                            <option value="Europe/Paris">Europe/Paris (Francia)</option>
+                                            <option value="Europe/Berlin">Europe/Berlin (Germania)</option>
+                                            <option value="America/New_York">America/New_York (US Eastern)</option>
+                                            <option value="America/Chicago">America/Chicago (US Central)</option>
+                                            <option value="America/Los_Angeles">America/Los_Angeles (US Pacific)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Formato Data</label>
+                                        <select class="form-select" id="formato-data">
+                                            <option value="DD/MM/YYYY" selected>DD/MM/YYYY</option>
+                                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Formato Ora</label>
+                                        <select class="form-select" id="formato-ora">
+                                            <option value="24" selected>24 ore (00:00 - 23:59)</option>
+                                            <option value="12">12 ore (AM/PM)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Sincronizzazione NTP</label>
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="ntp-enabled" checked>
+                                            <label class="form-check-label" for="ntp-enabled">
+                                                Abilita sincronizzazione automatica
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Server NTP</label>
+                                        <input type="text" class="form-control" id="ntp-server" 
+                                               value="pool.ntp.org" placeholder="pool.ntp.org">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Ora Corrente del Sistema</label>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-clock me-2"></i>
+                                            <span id="system-time">--:--:--</span>
+                                            <small class="d-block text-muted mt-1">Timezone: <span id="current-timezone">Europe/Rome</span></small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Salva Configurazioni Orologio
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Azioni Sistema -->
@@ -894,6 +1015,8 @@ ADMIN_CONFIG_TEMPLATE = """
         // Debug section functionality
         let logInterval = null;
         let isLogging = false;
+        let isPaused = false;
+        let allLogs = [];  // Mantiene tutti i log per quando è in pausa
         
         // Toggle log streaming
         document.getElementById('toggle-log')?.addEventListener('click', function() {
@@ -908,6 +1031,22 @@ ADMIN_CONFIG_TEMPLATE = """
                 btn.innerHTML = '<i class="fas fa-play"></i> Avvia Log';
                 btn.classList.remove('btn-warning');
                 btn.classList.add('btn-primary');
+            }
+        });
+        
+        // Pause/Resume log
+        document.getElementById('pause-log')?.addEventListener('click', function() {
+            isPaused = !isPaused;
+            const btn = this;
+            
+            if (isPaused) {
+                btn.innerHTML = '<i class="fas fa-play"></i> Riprendi';
+                btn.classList.remove('btn-info');
+                btn.classList.add('btn-success');
+            } else {
+                btn.innerHTML = '<i class="fas fa-pause"></i> Pausa';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-info');
             }
         });
         
@@ -949,37 +1088,52 @@ ADMIN_CONFIG_TEMPLATE = """
         
         function startLogStreaming() {
             isLogging = true;
+            isPaused = false;
+            allLogs = [];
+            
+            // Mostra il pulsante pausa
+            const pauseBtn = document.getElementById('pause-log');
+            if (pauseBtn) pauseBtn.style.display = 'inline-block';
+            
             const logOutput = document.getElementById('log-output');
             logOutput.innerHTML = '<div class="text-info">Connessione al log...</div>';
             
             logInterval = setInterval(() => {
-                fetch('/api/system-logs')
+                // Richiedi più righe se è in pausa per permettere l'ispezione
+                const numLines = isPaused ? 1000 : 100;
+                fetch(`/api/system-logs?lines=${numLines}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.logs && data.logs.length > 0) {
-                            logOutput.innerHTML = '';
-                            data.logs.forEach(log => {
-                                const logLine = document.createElement('div');
-                                logLine.style.marginBottom = '2px';
-                                
-                                if (log.includes('ERROR') || log.includes('❌')) {
-                                    logLine.style.color = '#ff6b6b';
-                                } else if (log.includes('WARNING') || log.includes('⚠️')) {
-                                    logLine.style.color = '#ffd93d';
-                                } else if (log.includes('INFO') || log.includes('✅')) {
-                                    logLine.style.color = '#6bcf7f';
-                                } else if (log.includes('DEBUG')) {
-                                    logLine.style.color = '#95a5a6';
-                                } else {
-                                    logLine.style.color = '#0f0';
-                                }
-                                
-                                logLine.textContent = log;
-                                logOutput.appendChild(logLine);
-                            });
+                            // Salva sempre tutti i log
+                            allLogs = data.logs;
                             
-                            const container = document.querySelector('.log-container');
-                            if (container) container.scrollTop = container.scrollHeight;
+                            // Se non è in pausa, aggiorna la visualizzazione
+                            if (!isPaused) {
+                                logOutput.innerHTML = '';
+                                data.logs.forEach(log => {
+                                    const logLine = document.createElement('div');
+                                    logLine.style.marginBottom = '2px';
+                                    
+                                    if (log.includes('ERROR') || log.includes('❌')) {
+                                        logLine.style.color = '#ff6b6b';
+                                    } else if (log.includes('WARNING') || log.includes('⚠️')) {
+                                        logLine.style.color = '#ffd93d';
+                                    } else if (log.includes('INFO') || log.includes('✅')) {
+                                        logLine.style.color = '#6bcf7f';
+                                    } else if (log.includes('DEBUG')) {
+                                        logLine.style.color = '#95a5a6';
+                                    } else {
+                                        logLine.style.color = '#0f0';
+                                    }
+                                    
+                                    logLine.textContent = log;
+                                    logOutput.appendChild(logLine);
+                                });
+                                
+                                const container = document.querySelector('.log-container');
+                                if (container) container.scrollTop = container.scrollHeight;
+                            }
                         }
                     })
                     .catch(error => console.error('Errore log:', error));
@@ -988,6 +1142,17 @@ ADMIN_CONFIG_TEMPLATE = """
         
         function stopLogStreaming() {
             isLogging = false;
+            isPaused = false;
+            
+            // Nascondi il pulsante pausa
+            const pauseBtn = document.getElementById('pause-log');
+            if (pauseBtn) {
+                pauseBtn.style.display = 'none';
+                pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pausa';
+                pauseBtn.classList.remove('btn-success');
+                pauseBtn.classList.add('btn-info');
+            }
+            
             if (logInterval) {
                 clearInterval(logInterval);
                 logInterval = null;
@@ -1107,6 +1272,237 @@ ADMIN_CONFIG_TEMPLATE = """
                 console.error('Errore test:', error);
                 resultDiv.innerHTML = '<div class="alert alert-danger">❌ Errore di connessione</div>';
             });
+        }
+        
+        // Relay configuration functions
+        function loadRelayConfig() {
+            fetch('/api/relay-config')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('relay-config-tbody');
+                    tbody.innerHTML = '';
+                    
+                    // Create 8 relay configuration rows
+                    for (let i = 1; i <= 8; i++) {
+                        const config = data[`relay_${i}`] || {
+                            description: `Relè ${i}`,
+                            valid_action: 'OFF',
+                            valid_duration: 0,
+                            invalid_action: 'OFF',
+                            invalid_duration: 0
+                        };
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>RLY${i}</td>
+                            <td><input type="text" class="form-control" id="relay_${i}_desc" value="${config.description}"></td>
+                            <td>
+                                <select class="form-select" id="relay_${i}_valid">
+                                    <option value="OFF" ${config.valid_action === 'OFF' ? 'selected' : ''}>OFF</option>
+                                    <option value="ON" ${config.valid_action === 'ON' ? 'selected' : ''}>ON</option>
+                                    <option value="PULSE" ${config.valid_action === 'PULSE' ? 'selected' : ''}>PULSE</option>
+                                </select>
+                            </td>
+                            <td><input type="number" class="form-control" id="relay_${i}_valid_duration" value="${config.valid_duration}" min="0" max="60" step="0.5"></td>
+                            <td>
+                                <select class="form-select" id="relay_${i}_invalid">
+                                    <option value="OFF" ${config.invalid_action === 'OFF' ? 'selected' : ''}>OFF</option>
+                                    <option value="ON" ${config.invalid_action === 'ON' ? 'selected' : ''}>ON</option>
+                                    <option value="PULSE" ${config.invalid_action === 'PULSE' ? 'selected' : ''}>PULSE</option>
+                                </select>
+                            </td>
+                            <td><input type="number" class="form-control" id="relay_${i}_invalid_duration" value="${config.invalid_duration}" min="0" max="60" step="0.5"></td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore caricamento configurazione:', error);
+                    // Load default configuration on error
+                    const tbody = document.getElementById('relay-config-tbody');
+                    tbody.innerHTML = '';
+                    
+                    const defaults = {
+                        1: { desc: 'Motore Cancello', valid: 'PULSE', valid_dur: 5, invalid: 'OFF', invalid_dur: 0 },
+                        2: { desc: 'LED Rosso', valid: 'OFF', valid_dur: 0, invalid: 'PULSE', invalid_dur: 3 },
+                        3: { desc: 'Buzzer', valid: 'PULSE', valid_dur: 0.5, invalid: 'PULSE', invalid_dur: 2 },
+                        4: { desc: 'LED Verde', valid: 'PULSE', valid_dur: 3, invalid: 'OFF', invalid_dur: 0 },
+                        5: { desc: 'Blocco Magnetico', valid: 'OFF', valid_dur: 5, invalid: 'ON', invalid_dur: 0 },
+                        6: { desc: 'Illuminazione', valid: 'ON', valid_dur: 10, invalid: 'OFF', invalid_dur: 0 },
+                        7: { desc: 'Riserva 1', valid: 'OFF', valid_dur: 0, invalid: 'OFF', invalid_dur: 0 },
+                        8: { desc: 'Riserva 2', valid: 'OFF', valid_dur: 0, invalid: 'OFF', invalid_dur: 0 }
+                    };
+                    
+                    for (let i = 1; i <= 8; i++) {
+                        const def = defaults[i];
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>RLY${i}</td>
+                            <td><input type="text" class="form-control" id="relay_${i}_desc" value="${def.desc}"></td>
+                            <td>
+                                <select class="form-select" id="relay_${i}_valid">
+                                    <option value="OFF" ${def.valid === 'OFF' ? 'selected' : ''}>OFF</option>
+                                    <option value="ON" ${def.valid === 'ON' ? 'selected' : ''}>ON</option>
+                                    <option value="PULSE" ${def.valid === 'PULSE' ? 'selected' : ''}>PULSE</option>
+                                </select>
+                            </td>
+                            <td><input type="number" class="form-control" id="relay_${i}_valid_duration" value="${def.valid_dur}" min="0" max="60" step="0.5"></td>
+                            <td>
+                                <select class="form-select" id="relay_${i}_invalid">
+                                    <option value="OFF" ${def.invalid === 'OFF' ? 'selected' : ''}>OFF</option>
+                                    <option value="ON" ${def.invalid === 'ON' ? 'selected' : ''}>ON</option>
+                                    <option value="PULSE" ${def.invalid === 'PULSE' ? 'selected' : ''}>PULSE</option>
+                                </select>
+                            </td>
+                            <td><input type="number" class="form-control" id="relay_${i}_invalid_duration" value="${def.invalid_dur}" min="0" max="60" step="0.5"></td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+        
+        function saveRelayConfig() {
+            const config = {};
+            
+            for (let i = 1; i <= 8; i++) {
+                config[`relay_${i}`] = {
+                    description: document.getElementById(`relay_${i}_desc`).value,
+                    valid_action: document.getElementById(`relay_${i}_valid`).value,
+                    valid_duration: parseFloat(document.getElementById(`relay_${i}_valid_duration`).value) || 0,
+                    invalid_action: document.getElementById(`relay_${i}_invalid`).value,
+                    invalid_duration: parseFloat(document.getElementById(`relay_${i}_invalid_duration`).value) || 0
+                };
+            }
+            
+            fetch('/api/relay-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Configurazione relè salvata con successo!');
+                } else {
+                    alert('❌ Errore nel salvataggio: ' + (data.error || 'Sconosciuto'));
+                }
+            })
+            .catch(error => {
+                console.error('Errore salvataggio:', error);
+                alert('❌ Errore di connessione durante il salvataggio');
+            });
+        }
+        
+        function testRelayConfig() {
+            if (confirm('Vuoi testare la configurazione attuale? Verranno attivati i relè configurati per CF valido per la durata specificata.')) {
+                fetch('/api/relay-config/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Test configurazione avviato! I relè verranno attivati secondo la configurazione.');
+                    } else {
+                        alert('❌ Errore nel test: ' + (data.error || 'Sconosciuto'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore test:', error);
+                    alert('❌ Errore di connessione durante il test');
+                });
+            }
+        }
+        
+        // Load relay configuration on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('relay-config-tbody')) {
+                loadRelayConfig();
+            }
+            // Initialize clock configuration if on config page
+            if (document.getElementById('orologio-form')) {
+                loadClockConfig();
+                updateSystemTime();
+                setInterval(updateSystemTime, 1000);
+            }
+        });
+        
+        // Gestione Orologio
+        function updateSystemTime() {
+            fetch('/api/server-time')
+                .then(response => response.json())
+                .then(data => {
+                    const date = new Date(data.timestamp);
+                    const timeStr = date.toLocaleTimeString('it-IT');
+                    const dateStr = date.toLocaleDateString('it-IT');
+                    const systemTimeEl = document.getElementById('system-time');
+                    const timezoneEl = document.getElementById('current-timezone');
+                    if (systemTimeEl) {
+                        systemTimeEl.textContent = `${dateStr} ${timeStr}`;
+                    }
+                    if (timezoneEl) {
+                        timezoneEl.textContent = data.timezone || 'Europe/Rome';
+                    }
+                })
+                .catch(err => console.error('Errore aggiornamento ora:', err));
+        }
+        
+        // Gestione form orologio
+        const orologioForm = document.getElementById('orologio-form');
+        if (orologioForm) {
+            orologioForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    timezone: document.getElementById('timezone').value,
+                    formato_data: document.getElementById('formato-data').value,
+                    formato_ora: document.getElementById('formato-ora').value,
+                    ntp_enabled: document.getElementById('ntp-enabled').checked,
+                    ntp_server: document.getElementById('ntp-server').value
+                };
+                
+                fetch('/api/admin/clock-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Configurazioni orologio salvate con successo!');
+                        // Ricarica la pagina per applicare le nuove impostazioni
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
+                    }
+                })
+                .catch(err => {
+                    console.error('Errore:', err);
+                    alert('Errore nel salvataggio delle configurazioni');
+                });
+            });
+        }
+        
+        // Carica configurazioni orologio correnti
+        function loadClockConfig() {
+            fetch('/api/admin/clock-config')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.config) {
+                        document.getElementById('timezone').value = data.config.timezone || 'Europe/Rome';
+                        document.getElementById('formato-data').value = data.config.formato_data || 'DD/MM/YYYY';
+                        document.getElementById('formato-ora').value = data.config.formato_ora || '24';
+                        document.getElementById('ntp-enabled').checked = data.config.ntp_enabled !== false;
+                        document.getElementById('ntp-server').value = data.config.ntp_server || 'pool.ntp.org';
+                    }
+                })
+                .catch(err => console.error('Errore caricamento config orologio:', err));
         }
     </script>
 </body>

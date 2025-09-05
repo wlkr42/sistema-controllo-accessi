@@ -220,6 +220,11 @@ ADMIN_CONFIG_TEMPLATE = """
                     <i class="fas fa-envelope"></i> Email
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#orologio">
+                    <i class="fas fa-clock"></i> Orologio
+                </a>
+            </li>
         </ul>
 
         <!-- Tab Content -->
@@ -405,6 +410,78 @@ ADMIN_CONFIG_TEMPLATE = """
                     </div>
                 </div>
             </div>
+            
+            <!-- Orologio -->
+            <div class="tab-pane fade" id="orologio">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-clock me-2"></i>Configurazioni Orologio</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="orologio-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Fuso Orario</label>
+                                        <select class="form-select" id="timezone">
+                                            <option value="UTC">UTC (Coordinated Universal Time)</option>
+                                            <option value="Europe/Rome" selected>Europe/Rome (Italia)</option>
+                                            <option value="Europe/London">Europe/London (UK)</option>
+                                            <option value="Europe/Paris">Europe/Paris (Francia)</option>
+                                            <option value="Europe/Berlin">Europe/Berlin (Germania)</option>
+                                            <option value="America/New_York">America/New_York (US Eastern)</option>
+                                            <option value="America/Chicago">America/Chicago (US Central)</option>
+                                            <option value="America/Los_Angeles">America/Los_Angeles (US Pacific)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Formato Data</label>
+                                        <select class="form-select" id="formato-data">
+                                            <option value="DD/MM/YYYY" selected>DD/MM/YYYY</option>
+                                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Formato Ora</label>
+                                        <select class="form-select" id="formato-ora">
+                                            <option value="24" selected>24 ore (00:00 - 23:59)</option>
+                                            <option value="12">12 ore (AM/PM)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Sincronizzazione NTP</label>
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="ntp-enabled" checked>
+                                            <label class="form-check-label" for="ntp-enabled">
+                                                Abilita sincronizzazione automatica
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Server NTP</label>
+                                        <input type="text" class="form-control" id="ntp-server" 
+                                               value="pool.ntp.org" placeholder="pool.ntp.org">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Ora Corrente del Sistema</label>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-clock me-2"></i>
+                                            <span id="system-time">--:--:--</span>
+                                            <small class="d-block text-muted mt-1">Timezone: <span id="current-timezone">Europe/Rome</span></small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Salva Configurazioni Orologio
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Azioni Sistema -->
@@ -484,6 +561,78 @@ ADMIN_CONFIG_TEMPLATE = """
                 alert('Funzionalità reset da implementare');
             }
         }
+        
+        // Gestione Orologio
+        function updateSystemTime() {
+            fetch('/api/server-time')
+                .then(response => response.json())
+                .then(data => {
+                    const date = new Date(data.timestamp);
+                    const timeStr = date.toLocaleTimeString('it-IT');
+                    const dateStr = date.toLocaleDateString('it-IT');
+                    document.getElementById('system-time').textContent = `${dateStr} ${timeStr}`;
+                    document.getElementById('current-timezone').textContent = data.timezone || 'Europe/Rome';
+                })
+                .catch(err => console.error('Errore aggiornamento ora:', err));
+        }
+        
+        // Aggiorna ora ogni secondo
+        updateSystemTime();
+        setInterval(updateSystemTime, 1000);
+        
+        // Gestione form orologio
+        document.getElementById('orologio-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                timezone: document.getElementById('timezone').value,
+                formato_data: document.getElementById('formato-data').value,
+                formato_ora: document.getElementById('formato-ora').value,
+                ntp_enabled: document.getElementById('ntp-enabled').checked,
+                ntp_server: document.getElementById('ntp-server').value
+            };
+            
+            fetch('/api/admin/clock-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Configurazioni orologio salvate con successo!');
+                    // Ricarica la pagina per applicare le nuove impostazioni
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
+                }
+            })
+            .catch(err => {
+                console.error('Errore:', err);
+                alert('Errore nel salvataggio delle configurazioni');
+            });
+        });
+        
+        // Carica configurazioni orologio correnti
+        function loadClockConfig() {
+            fetch('/api/admin/clock-config')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.config) {
+                        document.getElementById('timezone').value = data.config.timezone || 'Europe/Rome';
+                        document.getElementById('formato-data').value = data.config.formato_data || 'DD/MM/YYYY';
+                        document.getElementById('formato-ora').value = data.config.formato_ora || '24';
+                        document.getElementById('ntp-enabled').checked = data.config.ntp_enabled !== false;
+                        document.getElementById('ntp-server').value = data.config.ntp_server || 'pool.ntp.org';
+                    }
+                })
+                .catch(err => console.error('Errore caricamento config orologio:', err));
+        }
+        
+        // Carica configurazioni all'avvio
+        loadClockConfig();
     </script>
 </body>
 </html>
