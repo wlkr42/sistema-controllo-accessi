@@ -761,6 +761,12 @@ def api_hardware_test_reader():
     """Test lettore tessere - CORRETTA CHIAMATA A hardware_tests"""
     return hardware_tests.test_reader()
 
+@app.route('/api/hardware/stop-reader', methods=['POST'])
+@require_auth()
+def api_hardware_stop_reader():
+    """Ferma il test/monitor del lettore"""
+    return hardware_tests.stop_reader_test()
+
 # ===============================
 # API ENDPOINTS - ODOO SYNC
 # ===============================

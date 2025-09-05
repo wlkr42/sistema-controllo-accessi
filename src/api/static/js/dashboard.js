@@ -83,32 +83,62 @@ function testGate() {
         });
 }
 
-// Test lettore con modal real-time
+// Test lettore con modal real-time - MONITOR NON BLOCCANTE
 function testReader() {
     const modal = new bootstrap.Modal(document.getElementById('readerTestModal'));
     modal.show();
     
     const logContent = document.getElementById('reader-log-content');
-    logContent.innerHTML = 'Cliccare "Avvia Test" per iniziare...';
+    logContent.innerHTML = 'Cliccare "Avvia Monitor" per iniziare...';
     window.continuousTestMode = false;
     window.testRestarting = false;
+    window.readerPollInterval = null;
+    
+    // Gestione chiusura modal
+    document.getElementById('readerTestModal').addEventListener('hidden.bs.modal', function () {
+        // Ferma il monitor quando si chiude il modal
+        if (window.readerPollInterval) {
+            clearInterval(window.readerPollInterval);
+            window.readerPollInterval = null;
+            // Invia richiesta di stop al server
+            fetch('/api/hardware/stop-reader', {method: 'POST'});
+        }
+        window.continuousTestMode = false;
+    });
     
     document.getElementById('start-reader-test').onclick = function() {
         if (window.continuousTestMode) {
+            // STOP
             window.continuousTestMode = false;
-            this.innerHTML = '<i class="fas fa-play"></i> Avvia Test';
-            addLogLine('⏹️ ARRESTO TEST RICHIESTO', 'warning');
-            addLogLine('Il test verrà fermato al prossimo ciclo');
+            this.innerHTML = '<i class="fas fa-play"></i> Avvia Monitor';
+            addLogLine('⏹️ ARRESTO MONITOR RICHIESTO', 'warning');
+            
+            // Ferma il polling
+            if (window.readerPollInterval) {
+                clearInterval(window.readerPollInterval);
+                window.readerPollInterval = null;
+            }
+            
+            // Invia richiesta di stop al server
+            fetch('/api/hardware/stop-reader', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    addLogLine('Monitor fermato', 'warning');
+                    resetTestButton();
+                });
             return;
         }
         
+        // START
         window.continuousTestMode = true;
         this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Test in corso...';
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Monitor attivo...';
         
         logContent.innerHTML = '';
-        addLogLine('🚀 AVVIO TEST LETTORE OMNIKEY 5427CK');
+        addLogLine('🚀 AVVIO MONITOR LETTORE IN TEMPO REALE');
         addLogLine('═'.repeat(50));
+        addLogLine('📡 Il lettore continua a funzionare normalmente');
+        addLogLine('💳 Monitor attivo - osserva le letture in tempo reale');
         
         fetch('/api/hardware/test-reader', {method: 'POST'})
             .then(response => response.json())
@@ -149,74 +179,91 @@ function testIntegrated() {
 
 // ===== FUNZIONI POLLING =====
 
-// Polling real-time per test lettore
+// Polling real-time per monitor lettore
 function startReaderPolling() {
-    const pollInterval = setInterval(() => {
+    let lastDetailsLength = 0;
+    
+    window.readerPollInterval = setInterval(() => {
         fetch('/api/hardware/status?test_id=reader')
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.test) {
                     const test = data.test;
                     
+                    // Aggiorna solo le nuove linee
                     if (test.details && test.details.length > 0) {
                         const logContent = document.getElementById('reader-log-content');
-                        const currentLines = logContent.querySelectorAll('.log-line').length;
                         
-                        for (let i = currentLines - 2; i < test.details.length; i++) {
-                            if (i >= 0 && test.details[i]) {
-                                addLogLine(test.details[i]);
+                        // Aggiungi solo le nuove linee
+                        for (let i = lastDetailsLength; i < test.details.length; i++) {
+                            if (test.details[i]) {
+                                // Gestisci linee speciali
+                                let line = test.details[i];
+                                let type = 'normal';
+                                
+                                if (line.includes('❌') || line.includes('NEGATO')) {
+                                    type = 'error';
+                                } else if (line.includes('✅') || line.includes('AUTORIZZATO')) {
+                                    type = 'success';
+                                } else if (line.includes('⏱️') || line.includes('⚠️')) {
+                                    type = 'warning';
+                                } else if (line.includes('📍') || line.includes('🎯')) {
+                                    type = 'status';
+                                }
+                                
+                                // Non aggiungere timestamp per le linee già formattate
+                                if (line.startsWith('[') || line.includes('═') || line.includes('─')) {
+                                    // Linea già formattata, aggiungi direttamente
+                                    const lineDiv = document.createElement('div');
+                                    lineDiv.className = 'log-line';
+                                    lineDiv.style.color = type === 'error' ? '#ff4444' :
+                                                         type === 'success' ? '#44ff44' :
+                                                         type === 'warning' ? '#ffaa00' :
+                                                         type === 'status' ? '#00aaff' : '#00ff00';
+                                    lineDiv.style.marginBottom = '2px';
+                                    lineDiv.innerHTML = line;
+                                    logContent.appendChild(lineDiv);
+                                } else {
+                                    addLogLine(line, type);
+                                }
                             }
+                        }
+                        
+                        lastDetailsLength = test.details.length;
+                        
+                        // Auto-scroll
+                        const logContainer = document.getElementById('reader-test-log');
+                        if (logContainer) {
+                            logContainer.scrollTop = logContainer.scrollHeight;
                         }
                     }
                     
-                    if (test.status !== 'running') {
-                        if (test.status === 'success') {
-                            addLogLine('🎯 TEST COMPLETATO CON SUCCESSO!', 'success');
-                        } else if (test.status === 'warning') {
-                            addLogLine('⚠️ TEST COMPLETATO CON AVVISI', 'warning');
-                        } else {
-                            addLogLine('❌ TEST FALLITO', 'error');
-                        }
-                        
-                        addLogLine('═'.repeat(50));
-                        
-                        if (window.continuousTestMode && !window.testRestarting) {
-                            window.testRestarting = true;
-                            clearInterval(pollInterval);
-                            
-                            setTimeout(() => {
-                                addLogLine('');
-                                addLogLine('⏳ ATTESA PROSSIMA TESSERA...', 'status');
-                                addLogLine('Inserire tessera per continuare il test', 'normal');
-                                addLogLine('');
-                            }, 500);
-                            
-                            setTimeout(() => {
-                                window.testRestarting = false;
-                                if (window.continuousTestMode) {
-                                    fetch('/api/hardware/test-reader', {method: 'POST'})
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                startReaderPolling();
-                                            }
-                                        });
-                                }
-                            }, 2000);
-                        } else {
-                            clearInterval(pollInterval);
-                        }
-                        
+                    // Gestione stati finali
+                    if (test.status === 'stopped') {
+                        addLogLine('Monitor fermato', 'warning');
+                        clearInterval(window.readerPollInterval);
+                        window.readerPollInterval = null;
+                        resetTestButton();
+                    } else if (test.status === 'completed' || test.status === 'success') {
+                        addLogLine('Monitor completato', 'success');
+                        clearInterval(window.readerPollInterval);
+                        window.readerPollInterval = null;
+                        resetTestButton();
+                    } else if (test.status === 'error') {
+                        addLogLine('Errore nel monitor', 'error');
+                        clearInterval(window.readerPollInterval);
+                        window.readerPollInterval = null;
                         resetTestButton();
                     }
                 }
             })
             .catch(error => {
-                clearInterval(pollInterval);
+                clearInterval(window.readerPollInterval);
+                window.readerPollInterval = null;
                 addLogLine(`❌ Errore polling: ${error}`, 'error');
                 resetTestButton();
             });
-    }, 1000);
+    }, 500); // Poll ogni 500ms per risposta più rapida
 }
 
 // Funzione per test sequenziale relay con animazioni real-time
@@ -376,9 +423,9 @@ function resetTestButton() {
     const btn = document.getElementById('start-reader-test');
     btn.disabled = false;
     if (window.continuousTestMode) {
-        btn.innerHTML = '<i class="fas fa-stop"></i> Ferma Test';
+        btn.innerHTML = '<i class="fas fa-stop"></i> Ferma Monitor';
     } else {
-        btn.innerHTML = '<i class="fas fa-play"></i> Avvia Test';
+        btn.innerHTML = '<i class="fas fa-play"></i> Avvia Monitor';
     }
 }
 
