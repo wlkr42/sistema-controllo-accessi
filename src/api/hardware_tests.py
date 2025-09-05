@@ -472,63 +472,63 @@ def test_reader():
                             last_log_id = latest[0]
                             if not detected_card:  # Solo se non già rilevato dal log
                                 monitoring_count += 1
+                            
+                            # Parse dati accesso
+                            cf = latest[2]
+                            nome = latest[3] or 'Sconosciuto'
+                            tipo_accesso = latest[4]
+                            motivo = latest[5]
+                            terminale = latest[6]
+                            durata = latest[7]
+                            
+                            # Timestamp in formato leggibile
+                            read_time = datetime.now().strftime('%H:%M:%S')
+                            
+                            # Aggiungi al log
+                            details.append("")
+                            details.append(f"🎯 [{read_time}] LETTURA #{monitoring_count}")
+                            details.append(f"📄 Codice Fiscale: {cf}")
+                            details.append(f"👤 Nome: {nome}")
+                            
+                            if tipo_accesso == 'AUTORIZZATO':
+                                details.append(f"✅ ACCESSO AUTORIZZATO")
+                                details.append(f"🚪 Cancello: APERTO")
+                            else:
+                                details.append(f"❌ ACCESSO NEGATO: {motivo or 'N/D'}")
+                            
+                            details.append(f"🖥️ Terminale: {terminale or 'N/D'}")
+                            if durata:
+                                details.append(f"⏱️ Elaborazione: {durata:.2f}ms")
+                            
+                            # Info aggiuntive da utenti autorizzati
+                            if cf:
+                                user = db.get_user_by_cf(cf)
+                                if user:
+                                    details.append(f"📊 Accessi totali: {user.get('accessi_totali', 0)}")
+                                    details.append(f"🏢 Gruppo: {user.get('gruppo_lavoro', 'N/D')}")
+                                    
+                                    # Orari configurati
+                                    try:
+                                        orari = json.loads(user.get('orari_accesso', '{}'))
+                                        if orari:
+                                            giorni_attivi = len([d for d, o in orari.items() if o.get('attivo')])
+                                            details.append(f"📅 Orari configurati: {giorni_attivi} giorni")
+                                    except:
+                                        pass
+                            
+                            details.append("━" * 50)
+                            
+                            # Aggiorna display
+                            with hardware_test_lock:
+                                hardware_test_results['reader']['details'] = details.copy()
+                                hardware_test_results['reader']['message'] = f'Ultima lettura: {cf}'
+                                hardware_test_results['reader']['timestamp'] = time.time()
                         
-                        # Parse dati accesso
-                        cf = latest[2]
-                        nome = latest[3] or 'Sconosciuto'
-                        tipo_accesso = latest[4]
-                        motivo = latest[5]
-                        terminale = latest[6]
-                        durata = latest[7]
+                        conn.close()
                         
-                        # Timestamp in formato leggibile
-                        read_time = datetime.now().strftime('%H:%M:%S')
-                        
-                        # Aggiungi al log
-                        details.append("")
-                        details.append(f"🎯 [{read_time}] LETTURA #{monitoring_count}")
-                        details.append(f"📄 Codice Fiscale: {cf}")
-                        details.append(f"👤 Nome: {nome}")
-                        
-                        if tipo_accesso == 'AUTORIZZATO':
-                            details.append(f"✅ ACCESSO AUTORIZZATO")
-                            details.append(f"🚪 Cancello: APERTO")
-                        else:
-                            details.append(f"❌ ACCESSO NEGATO: {motivo or 'N/D'}")
-                        
-                        details.append(f"🖥️ Terminale: {terminale or 'N/D'}")
-                        if durata:
-                            details.append(f"⏱️ Elaborazione: {durata:.2f}ms")
-                        
-                        # Info aggiuntive da utenti autorizzati
-                        if cf:
-                            user = db.get_user_by_cf(cf)
-                            if user:
-                                details.append(f"📊 Accessi totali: {user.get('accessi_totali', 0)}")
-                                details.append(f"🏢 Gruppo: {user.get('gruppo_lavoro', 'N/D')}")
-                                
-                                # Orari configurati
-                                try:
-                                    orari = json.loads(user.get('orari_accesso', '{}'))
-                                    if orari:
-                                        giorni_attivi = len([d for d, o in orari.items() if o.get('attivo')])
-                                        details.append(f"📅 Orari configurati: {giorni_attivi} giorni")
-                                except:
-                                    pass
-                        
-                        details.append("━" * 50)
-                        
-                        # Aggiorna display
-                        with hardware_test_lock:
-                            hardware_test_results['reader']['details'] = details.copy()
-                            hardware_test_results['reader']['message'] = f'Ultima lettura: {cf}'
-                            hardware_test_results['reader']['timestamp'] = time.time()
-                    
-                    conn.close()
-                    
-                except Exception as e:
-                    # Ignora errori di lettura database, continua il monitoraggio
-                    pass
+                    except Exception as e:
+                        # Ignora errori di lettura database, continua il monitoraggio
+                        pass
                 
                 time.sleep(0.5)  # Check ogni 500ms
             
