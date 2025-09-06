@@ -1,5 +1,31 @@
 # Changelog - Sistema Controllo Accessi
 
+## [2.6.0] - 2025-09-06
+
+### 🔧 Refactoring Strutturale
+
+#### 🗄️ Migrazione Database
+- **Nuovo Percorso Database**:
+  - Database migrato da `/src/access.db` a `/data/access.db`
+  - Separazione completa tra codice sorgente e dati
+  - Struttura directory più pulita e professionale
+
+- **Configurazione Centralizzata**:
+  - Nuovo file `src/core/db_config.py` per gestione path
+  - Supporto retrocompatibilità con vecchio percorso
+  - Import unificato in tutti i moduli (20+ file aggiornati)
+
+### 🔧 Miglioramenti Tecnici
+- Aggiornati tutti i moduli per usare configurazione centralizzata DB
+- Modificati: web_api.py, auth.py, utils.py, tutti i modules/
+- Aggiornati script esterni e di test
+- Backup automatico creato prima della migrazione
+
+### 📚 Documentazione
+- Aggiornata guida sviluppatore con nuova struttura
+- Documentata procedura migrazione database
+- Aggiornati esempi di codice
+
 ## [2.5.0] - 2025-09-06
 
 ### 🎉 Nuove Funzionalità

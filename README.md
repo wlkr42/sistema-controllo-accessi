@@ -1,8 +1,13 @@
-# Sistema Controllo Accessi - v2.5.0
+# Sistema Controllo Accessi - v2.6.0
 
 Sistema completo per il controllo degli accessi tramite tessera sanitaria con gestione hardware, interfaccia web e funzionalità avanzate.
 
-## ✨ Ultime Novità (v2.5.0)
+## ✨ Ultime Novità (v2.6.0)
+
+- 🗄️ **Database Migrato**: Database spostato da `/src` a `/data` per struttura corretta
+- 🔧 **Configurazione Centralizzata**: Nuovo sistema gestione path database unificato
+
+## ✨ Novità v2.5.0
 
 - 🔄 **Server Sync**: Sincronizzazione automatica con server remoto configurabile
 - 📄 **Paginazione Utenti**: Sistema paginazione con selezione elementi (30/50/100/tutti)

@@ -23,12 +23,15 @@
 │   │       └── email_log_allerte_sistema.py
 │   ├── core/
 │   │   ├── database.py             # Gestione database
-│   │   └── config.py               # Configurazioni
+│   │   ├── config.py               # Configurazioni
+│   │   └── db_config.py            # Configurazione centralizzata path DB
 │   └── hardware/
 │       ├── crt285_controller.py    # Controller lettore tessere
 │       └── usb_rly08_controller.py # Controller relè
 ├── data/
-│   ├── database.db                 # Database SQLite
+│   ├── access.db                   # Database SQLite (migrato da /src)
+│   ├── database.db                 # Database vecchio (deprecato)
+│   ├── sync_config.json            # Configurazione sincronizzazione
 │   └── partner_cache.json          # Cache partner
 ├── logs/
 │   └── access_control.log          # Log applicazione
@@ -520,4 +523,48 @@ date.toLocaleString('it-IT', {
 
 ---
 
-**Ultimo aggiornamento**: 2025-09-06 - Versione 2.4.0
+## 🗄️ Gestione Database
+
+### Migrazione Path Database (v2.6.0)
+Il database è stato migrato dalla cartella `/src` alla cartella `/data` per una migliore organizzazione:
+
+#### Configurazione Centralizzata
+```python
+# File: src/core/db_config.py
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+DB_PATH = str(PROJECT_ROOT / "data" / "access.db")
+OLD_DB_PATH = str(PROJECT_ROOT / "src" / "access.db")  # Per retrocompatibilità
+
+def get_db_path():
+    """Restituisce il percorso corretto del database"""
+    if os.path.exists(DB_PATH):
+        return DB_PATH
+    elif os.path.exists(OLD_DB_PATH):
+        return OLD_DB_PATH
+    return DB_PATH
+
+CURRENT_DB_PATH = get_db_path()
+```
+
+#### Utilizzo nei Moduli
+```python
+# Invece di hardcodare il path:
+# DB_PATH = '/opt/access_control/src/access.db'
+
+# Usa la configurazione centralizzata:
+from core.db_config import CURRENT_DB_PATH as DB_PATH
+
+conn = sqlite3.connect(DB_PATH)
+```
+
+#### Vantaggi della Migrazione
+- **Separazione codice/dati**: Il codice sorgente non contiene più file di dati
+- **Backup semplificato**: Tutti i dati sono in `/data`
+- **Gestione centralizzata**: Un solo punto per configurare il path
+- **Retrocompatibilità**: Supporta ancora il vecchio path se necessario
+
+---
+
+**Ultimo aggiornamento**: 2025-09-06 - Versione 2.6.0
