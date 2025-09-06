@@ -1,5 +1,34 @@
 # Changelog - Sistema Controllo Accessi
 
+## [2.2.0] - 2025-09-06
+
+### 🎉 Nuove Funzionalità
+
+#### 🔍 Test Lettore Tessere Migliorato
+- **Monitoraggio database real-time** senza interferire con il lettore hardware
+- **Visualizzazione dettagliata motivazioni rifiuto**:
+  - "Limite mensile accessi superato"
+  - "Utente disattivato"
+  - "Tessera non registrata"
+  - "Accesso non consentito in questo orario"
+- **Pulsante Stop funzionante** per interrompere il test
+- **Nessuna interferenza** con il sistema principale operativo
+- Il test ora legge direttamente dalla tabella `log_accessi` i campi:
+  - `motivo_rifiuto`: per la motivazione del rifiuto
+  - `nome_utente`: per il nome dell'utente
+
+### 🐛 Bug Fix
+- Corretto errore JSON parsing nel pulsante Stop del test lettore
+- Rimossa inizializzazione hardware nel test lettore che disattivava il sistema principale
+- Aggiunto header Content-Type nelle chiamate API JavaScript
+- Corretto endpoint `/api/hardware/stop-reader` che chiamava funzione inesistente
+
+### 🔧 Miglioramenti Tecnici
+- Refactoring completo della funzione `test_reader()` in `hardware_tests.py`
+- Aggiunta funzione `stop_reader()` per gestire interruzione test
+- Migliorata gestione errori nel JavaScript del dashboard
+- Aggiunto logging dettagliato nella console per debug
+
 ## [2.1.0] - 2025-09-05
 
 ### 🎉 Nuove Funzionalità

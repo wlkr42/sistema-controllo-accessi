@@ -326,252 +326,158 @@ def test_integrated(get_db_connection):
         return jsonify({'success': False, 'error': str(e)})
 
 def test_reader():
-    """Test hardware lettore tessere - Monitor in tempo reale senza bloccare"""
-    try:
-        from database.database_manager import DatabaseManager
-        import os
-        import json
-    except ImportError as e:
-        return jsonify({'success': False, 'error': f'Import error: {str(e)}'})
+    """Test hardware lettore tessere - Solo monitoraggio database"""
 
     def test_reader_thread():
         global hardware_test_results
-        
+
         # Reset risultati
         with hardware_test_lock:
             hardware_test_results['reader'] = {
                 'status': 'running',
-                'message': 'Monitor attivo...',
+                'message': 'Inizializzazione...',
                 'details': [],
-                'timestamp': time.time(),
-                'monitoring': True,
-                'stop_requested': False
+                'timestamp': time.time()
             }
 
         try:
             details = []
-            details.append("🚀 AVVIO MONITOR LETTORE IN TEMPO REALE")
-            details.append("═" * 50)
-            details.append("📡 Il lettore continua a funzionare normalmente")
-            details.append("💳 Monitor attivo - osserva le letture in tempo reale")
-            details.append("")
-            
-            # Setup per monitoraggio database
-            db_path = '/opt/access_control/data/access_control.db'
-            db = DatabaseManager(db_path)
 
-            # Info sul sistema di monitoraggio
-            try:
-                from core.config import get_config_manager
-                config_manager = get_config_manager()
-                card_cfg = config_manager.get_hardware_assignment("card_reader")
-                device_key = card_cfg.get("device_key", "N/D")
-                device_path = card_cfg.get("device_path", "N/D")
-                
-                details.append(f"🔧 Device Key: {device_key}")
-                details.append(f"📂 Device Path: {device_path}")
-            except:
-                pass
-            
-            # Verifica se il lettore è attivo controllando il processo
-            try:
-                import subprocess
-                result = subprocess.run(['pgrep', '-f', 'main.py'], capture_output=True, text=True)
-                if result.returncode == 0:
-                    details.append("✅ Lettore attivo - processo main.py in esecuzione")
-                else:
-                    details.append("⚠️ Processo main.py non trovato")
-            except:
-                pass
-            
-            details.append("")
-            details.append("🔍 MONITORAGGIO ATTIVO - INSERIRE TESSERA...")
+            # SOLO MONITOR DATABASE - NON TOCCA IL LETTORE HARDWARE
+            details.append("📊 MONITOR DATABASE ATTIVO")
+            details.append("ℹ️ Il lettore hardware NON viene toccato")
+            details.append("✅ Sistema principale resta operativo")
+            details.append("💳 IN ATTESA TESSERA SANITARIA...")
             details.append("━" * 50)
             
             # Aggiorna stato iniziale
             with hardware_test_lock:
                 hardware_test_results['reader']['details'] = details.copy()
-                hardware_test_results['reader']['message'] = 'Monitor attivo - In attesa tessera...'
+                hardware_test_results['reader']['message'] = 'In attesa tessera...'
             
-            # Monitor per 60 secondi o fino a stop
+            # Loop principale - 60 secondi
             timeout = 60
             start_time = time.time()
-            monitoring_count = 0
-            last_log_id = None
-            last_log_position = 0
+            cards_read = 0
+            last_access_id = 0
             
-            # Ottieni posizione iniziale nel file di log
-            log_file = '/opt/access_control/logs/access.log'
-            if os.path.exists(log_file):
-                with open(log_file, 'r') as f:
-                    f.seek(0, 2)  # Vai alla fine
-                    last_log_position = f.tell()
+            # Ottieni ultimo ID dal database per monitoraggio
+            import sqlite3
+            db_path = '/opt/access_control/src/access.db'
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT MAX(id) FROM log_accessi")
+                result = cursor.fetchone()
+                last_access_id = result[0] if result and result[0] else 0
+                conn.close()
+                details.append(f"📍 Monitoraggio database da ID: {last_access_id + 1}")
+            except:
+                last_access_id = 0
             
             while (time.time() - start_time) < timeout:
                 # Controlla se il test è stato fermato
                 with hardware_test_lock:
-                    if hardware_test_results.get('reader', {}).get('stop_requested', False):
+                    if hardware_test_results.get('reader', {}).get('status') == 'stopped':
                         details.append("")
-                        details.append("⏹️ MONITOR FERMATO DALL'UTENTE")
-                        hardware_test_results['reader'] = {
-                            'status': 'stopped',
-                            'message': 'Monitor fermato',
-                            'details': details,
-                            'timestamp': time.time(),
-                            'monitoring': False
-                        }
-                        return
+                        details.append("⏹️ TEST FERMATO DALL'UTENTE")
+                        break
                 
-                # Monitora anche il file di log per letture immediate
-                detected_card = False
-                if os.path.exists(log_file):
-                    try:
-                        with open(log_file, 'r') as f:
-                            f.seek(last_log_position)
-                            new_lines = f.readlines()
-                            last_log_position = f.tell()
-                            
-                            for line in new_lines:
-                                if 'Tessera letta:' in line or 'CF letto:' in line:
-                                    # Estrai CF dalla linea di log
-                                    if 'CF:' in line:
-                                        cf_start = line.index('CF:') + 3
-                                        cf = line[cf_start:cf_start+16].strip()
-                                        if len(cf) == 16 and cf.isalnum():
-                                            detected_card = True
-                                            monitoring_count += 1
-                                            
-                                            read_time = datetime.now().strftime('%H:%M:%S')
-                                            details.append("")
-                                            details.append(f"🎯 [{read_time}] TESSERA RILEVATA #{monitoring_count}")
-                                            details.append(f"📄 Codice Fiscale: {cf}")
-                                            
-                                            # Aggiorna display immediatamente
-                                            with hardware_test_lock:
-                                                hardware_test_results['reader']['details'] = details.copy()
-                                                hardware_test_results['reader']['message'] = f'Tessera rilevata: {cf}'
-                                                hardware_test_results['reader']['timestamp'] = time.time()
-                    except:
-                        pass
-                
-                # Leggi anche dal database per info complete
-                if not detected_card:
-                    try:
-                        conn = db._get_connection()
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            SELECT id, timestamp, codice_fiscale, nome_utente, tipo_accesso,
-                                   motivo_rifiuto, terminale_id, durata_elaborazione
-                            FROM log_accessi
-                            ORDER BY id DESC
-                            LIMIT 1
-                        """)
-                        latest = cursor.fetchone()
-                        
-                        if latest and latest[0] != last_log_id:
-                            last_log_id = latest[0]
-                            if not detected_card:  # Solo se non già rilevato dal log
-                                monitoring_count += 1
-                            
-                            # Parse dati accesso
-                            cf = latest[2]
-                            nome = latest[3] or 'Sconosciuto'
-                            tipo_accesso = latest[4]
-                            motivo = latest[5]
-                            terminale = latest[6]
-                            durata = latest[7]
-                            
-                            # Timestamp in formato leggibile
+                try:
+                    # Monitora database invece di leggere direttamente
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT id, codice_fiscale, autorizzato, motivo_rifiuto, nome_utente 
+                        FROM log_accessi 
+                        WHERE id > ? 
+                        ORDER BY id
+                    """, (last_access_id,))
+                    new_accesses = cursor.fetchall()
+                    
+                    for access_id, cf, autorizzato, motivo_rifiuto, nome_utente in new_accesses:
+                        if access_id > last_access_id:
+                            # NUOVA TESSERA DAL DATABASE!
+                            last_access_id = access_id
+                            cards_read += 1
                             read_time = datetime.now().strftime('%H:%M:%S')
                             
-                            # Aggiungi al log
-                            details.append("")
-                            details.append(f"🎯 [{read_time}] LETTURA #{monitoring_count}")
+                            # Log dettagliato per questa tessera
+                            details.append(f"")
+                            details.append(f"🎯 [{read_time}] TESSERA RILEVATA #{cards_read}")
                             details.append(f"📄 Codice Fiscale: {cf}")
-                            details.append(f"👤 Nome: {nome}")
                             
-                            if tipo_accesso == 'AUTORIZZATO':
+                            # Mostra nome utente se disponibile
+                            if nome_utente:
+                                details.append(f"👤 Utente: {nome_utente}")
+                            
+                            # Mostra stato autorizzazione con motivazione dal database
+                            if autorizzato:
                                 details.append(f"✅ ACCESSO AUTORIZZATO")
-                                details.append(f"🚪 Cancello: APERTO")
                             else:
-                                details.append(f"❌ ACCESSO NEGATO: {motivo or 'N/D'}")
+                                details.append(f"❌ ACCESSO NEGATO")
+                                # Mostra il motivo del rifiuto se disponibile
+                                if motivo_rifiuto:
+                                    details.append(f"📝 Motivo: {motivo_rifiuto}")
                             
-                            details.append(f"🖥️ Terminale: {terminale or 'N/D'}")
-                            if durata:
-                                details.append(f"⏱️ Elaborazione: {durata:.2f}ms")
-                            
-                            # Info aggiuntive da utenti autorizzati
-                            if cf:
-                                user = db.get_user_by_cf(cf)
-                                if user:
-                                    details.append(f"📊 Accessi totali: {user.get('accessi_totali', 0)}")
-                                    details.append(f"🏢 Gruppo: {user.get('gruppo_lavoro', 'N/D')}")
-                                    
-                                    # Orari configurati
-                                    try:
-                                        orari = json.loads(user.get('orari_accesso', '{}'))
-                                        if orari:
-                                            giorni_attivi = len([d for d, o in orari.items() if o.get('attivo')])
-                                            details.append(f"📅 Orari configurati: {giorni_attivi} giorni")
-                                    except:
-                                        pass
-                            
+                            details.append(f"✅ Log salvato nel database")
                             details.append("━" * 50)
-                            
-                            # Aggiorna display
-                            with hardware_test_lock:
-                                hardware_test_results['reader']['details'] = details.copy()
-                                hardware_test_results['reader']['message'] = f'Ultima lettura: {cf}'
-                                hardware_test_results['reader']['timestamp'] = time.time()
+                    
+                    conn.close()
+                    
+                    # Aggiorna risultati dopo ogni check
+                    if cards_read > 0:
+                        with hardware_test_lock:
+                            hardware_test_results['reader']['details'] = details.copy()
+                            hardware_test_results['reader']['message'] = f'Tessere lette: {cards_read}'
                         
-                        conn.close()
-                        
-                    except Exception as e:
-                        # Ignora errori di lettura database, continua il monitoraggio
-                        pass
+                except Exception as e:
+                    # Ignora errori temporanei
+                    pass
                 
-                time.sleep(0.5)  # Check ogni 500ms
+                time.sleep(0.1)  # Check veloce
             
-            # Fine monitor
+            # Fine test
             details.append("")
-            details.append("⏱️ MONITOR COMPLETATO")
-            details.append(f"📊 Letture monitorate: {monitoring_count}")
+            details.append("⏱️ TEST COMPLETATO")
+            details.append(f"📊 Tessere lette: {cards_read}")
             details.append(f"⏱️ Durata: {int(time.time() - start_time)} secondi")
             
             with hardware_test_lock:
                 hardware_test_results['reader'] = {
-                    'status': 'success' if monitoring_count > 0 else 'completed',
-                    'message': f'Monitor completato - {monitoring_count} letture',
+                    'status': 'success' if cards_read > 0 else 'warning',
+                    'message': f'Test completato - {cards_read} tessere lette',
                     'details': details,
-                    'timestamp': time.time(),
-                    'monitoring': False
+                    'timestamp': time.time()
                 }
                 
         except Exception as e:
-            details.append(f"❌ ERRORE MONITOR: {str(e)}")
+            details.append(f"❌ ERRORE: {str(e)}")
             with hardware_test_lock:
                 hardware_test_results['reader'] = {
                     'status': 'error',
-                    'message': f'Errore monitor: {str(e)}',
+                    'message': f'Errore: {str(e)}',
                     'details': details,
-                    'timestamp': time.time(),
-                    'monitoring': False
+                    'timestamp': time.time()
                 }
     
     # Avvia test in background
     threading.Thread(target=test_reader_thread, daemon=True).start()
     return jsonify({'success': True, 'message': 'Test lettore avviato'})
 
-# Funzioni di stato
-def stop_reader_test():
-    """Ferma il test/monitor del lettore"""
+def stop_reader():
+    """Ferma il test del lettore"""
     global hardware_test_results
+    
     with hardware_test_lock:
-        if 'reader' in hardware_test_results:
-            hardware_test_results['reader']['stop_requested'] = True
-            return jsonify({'success': True, 'message': 'Stop richiesto'})
-    return jsonify({'success': False, 'message': 'Nessun test attivo'})
+        if 'reader' in hardware_test_results and hardware_test_results['reader'].get('status') == 'running':
+            hardware_test_results['reader']['status'] = 'stopped'
+            hardware_test_results['reader']['message'] = 'Test fermato dall\'utente'
+            return jsonify({'success': True, 'message': 'Test lettore fermato'})
+        else:
+            return jsonify({'success': False, 'message': 'Nessun test in esecuzione'})
 
+# Funzioni di stato
 def get_relay_status():
     """Restituisce stato test relay"""
     global relay_test_state

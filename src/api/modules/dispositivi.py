@@ -726,17 +726,26 @@ def api_relay_mapping():
 def api_test_reader():
     """Test connessione lettore tessere"""
     try:
-        # Testa connessione al lettore
-        # Qui andrà integrato il codice del card_reader esistente
-        
-        return jsonify({
-            'success': True,
-            'message': 'Lettore operativo - OMNIKEY 5427CK'
-        })
+        from hardware_tests import test_reader
+        return test_reader()
     except Exception as e:
         return jsonify({
             'success': False,
             'error': f'Errore lettore: {str(e)}'
+        }), 500
+
+@app.route('/api/devices/test/reader/stop', methods=['POST'])
+@require_auth
+@require_permission('all')
+def api_stop_reader():
+    """Ferma test lettore tessere"""
+    try:
+        from hardware_tests import stop_reader
+        return stop_reader()
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Errore stop: {str(e)}'
         }), 500
 
 @app.route('/api/devices/test/relay', methods=['POST'])

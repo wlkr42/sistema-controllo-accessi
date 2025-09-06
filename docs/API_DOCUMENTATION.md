@@ -226,6 +226,59 @@ Test apertura cancello (attiva relè configurati).
 }
 ```
 
+### POST `/api/hardware/test-reader`
+Test del lettore tessere con monitoraggio database.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Test lettore avviato"
+}
+```
+
+### POST `/api/hardware/stop-reader`
+Ferma il test del lettore tessere in esecuzione.
+
+**Response (test in esecuzione):**
+```json
+{
+  "success": true,
+  "message": "Test lettore fermato"
+}
+```
+
+**Response (nessun test attivo):**
+```json
+{
+  "success": false,
+  "message": "Nessun test in esecuzione"
+}
+```
+
+### GET `/api/hardware/status?test_id=reader`
+Ottiene lo stato del test lettore in esecuzione.
+
+**Response:**
+```json
+{
+  "success": true,
+  "test": {
+    "status": "running",
+    "message": "Tessere lette: 2",
+    "details": [
+      "📊 MONITOR DATABASE ATTIVO",
+      "🎯 [09:43:28] TESSERA RILEVATA #1",
+      "📄 Codice Fiscale: GBRWTR72D20D086D",
+      "👤 Utente: Gabriele Walter Test Isola Ecologica",
+      "❌ ACCESSO NEGATO",
+      "📝 Motivo: Limite mensile accessi superato"
+    ],
+    "timestamp": 1757144608.5
+  }
+}
+```
+
 ### POST `/api/hardware/test-connection`
 Test connessione hardware.
 

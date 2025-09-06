@@ -192,6 +192,26 @@ codice_fiscale = controller.read_card()  # Blocking
 controller.disconnect()
 ```
 
+### Test Lettore senza Interferenze
+Il test del lettore ora funziona monitorando il database invece di accedere all'hardware:
+
+```python
+# hardware_tests.py - test_reader()
+# NON inizializza il lettore hardware
+# Monitora la tabella log_accessi per nuovi inserimenti
+cursor.execute("""
+    SELECT id, codice_fiscale, autorizzato, motivo_rifiuto, nome_utente 
+    FROM log_accessi 
+    WHERE id > ? 
+    ORDER BY id
+""", (last_access_id,))
+```
+
+**Campi database utilizzati:**
+- `motivo_rifiuto`: Contiene la motivazione del rifiuto
+- `nome_utente`: Nome dell'utente se disponibile
+- `autorizzato`: Flag booleano per accesso autorizzato/negato
+
 ### Controller Relè USB-RLY08
 ```python
 from hardware.usb_rly08_controller import USBRLY08Controller

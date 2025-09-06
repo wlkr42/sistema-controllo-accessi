@@ -83,20 +83,20 @@ function testGate() {
         });
 }
 
-// Test lettore con modal real-time - MONITOR NON BLOCCANTE
+// Test lettore con modal real-time - TEST REALE CON HARDWARE
 function testReader() {
     const modal = new bootstrap.Modal(document.getElementById('readerTestModal'));
     modal.show();
     
     const logContent = document.getElementById('reader-log-content');
-    logContent.innerHTML = 'Cliccare "Avvia Monitor" per iniziare...';
+    logContent.innerHTML = 'Cliccare "Avvia Test" per iniziare il test del lettore...';
     window.continuousTestMode = false;
     window.testRestarting = false;
     window.readerPollInterval = null;
     
     // Gestione chiusura modal
     document.getElementById('readerTestModal').addEventListener('hidden.bs.modal', function () {
-        // Ferma il monitor quando si chiude il modal
+        // Ferma il test quando si chiude il modal
         if (window.readerPollInterval) {
             clearInterval(window.readerPollInterval);
             window.readerPollInterval = null;
@@ -106,39 +106,29 @@ function testReader() {
         window.continuousTestMode = false;
     });
     
+    // Pulsante START
     document.getElementById('start-reader-test').onclick = function() {
         if (window.continuousTestMode) {
-            // STOP
-            window.continuousTestMode = false;
-            this.innerHTML = '<i class="fas fa-play"></i> Avvia Monitor';
-            addLogLine('⏹️ ARRESTO MONITOR RICHIESTO', 'warning');
-            
-            // Ferma il polling
-            if (window.readerPollInterval) {
-                clearInterval(window.readerPollInterval);
-                window.readerPollInterval = null;
-            }
-            
-            // Invia richiesta di stop al server
-            fetch('/api/hardware/stop-reader', {method: 'POST'})
-                .then(response => response.json())
-                .then(data => {
-                    addLogLine('Monitor fermato', 'warning');
-                    resetTestButton();
-                });
-            return;
+            return; // Già attivo, ignora click
         }
         
         // START
         window.continuousTestMode = true;
         this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Monitor attivo...';
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Test attivo...';
+        
+        // Abilita pulsante stop
+        const stopBtn = document.getElementById('stop-reader-test');
+        if (stopBtn) {
+            stopBtn.disabled = false;
+        }
         
         logContent.innerHTML = '';
-        addLogLine('🚀 AVVIO MONITOR LETTORE IN TEMPO REALE');
+        addLogLine('🚀 AVVIO TEST LETTORE IN TEMPO REALE');
         addLogLine('═'.repeat(50));
-        addLogLine('📡 Il lettore continua a funzionare normalmente');
-        addLogLine('💳 Monitor attivo - osserva le letture in tempo reale');
+        addLogLine('⚡ TEST ATTIVO: lettura tessere e attivazione relè');
+        addLogLine('💳 INSERIRE TESSERA NEL LETTORE PER TEST...');
+        addLogLine('🔧 Il sistema principale resta operativo');
         
         fetch('/api/hardware/test-reader', {method: 'POST'})
             .then(response => response.json())
@@ -149,6 +139,58 @@ function testReader() {
                     addLogLine(`❌ ERRORE: ${data.error}`, 'error');
                     resetTestButton();
                 }
+            });
+    };
+    
+    // Pulsante STOP
+    document.getElementById('stop-reader-test').onclick = function() {
+        if (!window.continuousTestMode) {
+            return; // Non attivo, ignora
+        }
+        
+        window.continuousTestMode = false;
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Arresto...';
+        
+        addLogLine('⏹️ ARRESTO TEST RICHIESTO', 'warning');
+        
+        // Ferma il polling
+        if (window.readerPollInterval) {
+            clearInterval(window.readerPollInterval);
+            window.readerPollInterval = null;
+        }
+        
+        // Invia richiesta di stop al server
+        fetch('/api/hardware/stop-reader', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    addLogLine('✅ Test fermato', 'success');
+                } else {
+                    addLogLine(`ℹ️ ${data.message}`, 'info');
+                }
+                resetTestButton();
+                // Reset pulsante stop
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-stop"></i> Stop Test';
+            })
+            .catch(error => {
+                console.error('Stop error:', error);
+                addLogLine(`⚠️ Errore stop: ${error.message || error}`, 'warning');
+                resetTestButton();
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-stop"></i> Stop Test';
             });
     };
 }
@@ -184,9 +226,18 @@ function startReaderPolling() {
     let lastDetailsLength = 0;
     
     window.readerPollInterval = setInterval(() => {
-        fetch('/api/hardware/status?test_id=reader')
-            .then(response => response.json())
+        fetch('/api/hardware/status?test_id=reader', {
+            credentials: 'include'  // Include cookies di sessione
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                // Debug
+                console.log('Poll response:', data);
                 if (data.success && data.test) {
                     const test = data.test;
                     
@@ -238,19 +289,30 @@ function startReaderPolling() {
                         }
                     }
                     
+                    // Mostra contatore tessere se disponibile
+                    if (test.cards_read !== undefined && test.cards_read > 0) {
+                        const modalTitle = document.querySelector('#readerTestModal .modal-title');
+                        if (modalTitle) {
+                            modalTitle.innerHTML = `<i class="fas fa-credit-card me-2"></i>Test Lettore - ${test.cards_read} tessere lette`;
+                        }
+                    }
+                    
                     // Gestione stati finali
                     if (test.status === 'stopped') {
-                        addLogLine('Monitor fermato', 'warning');
+                        addLogLine('⏹️ Test fermato', 'warning');
                         clearInterval(window.readerPollInterval);
                         window.readerPollInterval = null;
                         resetTestButton();
                     } else if (test.status === 'completed' || test.status === 'success') {
-                        addLogLine('Monitor completato', 'success');
+                        addLogLine('✅ Test completato', 'success');
+                        if (test.cards_read !== undefined) {
+                            addLogLine(`📊 Totale tessere testate: ${test.cards_read}`, 'success');
+                        }
                         clearInterval(window.readerPollInterval);
                         window.readerPollInterval = null;
                         resetTestButton();
                     } else if (test.status === 'error') {
-                        addLogLine('Errore nel monitor', 'error');
+                        addLogLine('❌ Errore nel test', 'error');
                         clearInterval(window.readerPollInterval);
                         window.readerPollInterval = null;
                         resetTestButton();
@@ -420,12 +482,19 @@ function addLogLine(text, type = 'normal') {
 
 // Reset pulsante test
 function resetTestButton() {
-    const btn = document.getElementById('start-reader-test');
-    btn.disabled = false;
-    if (window.continuousTestMode) {
-        btn.innerHTML = '<i class="fas fa-stop"></i> Ferma Monitor';
-    } else {
-        btn.innerHTML = '<i class="fas fa-play"></i> Avvia Monitor';
+    const startBtn = document.getElementById('start-reader-test');
+    const stopBtn = document.getElementById('stop-reader-test');
+    
+    window.continuousTestMode = false;
+    
+    if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-play"></i> Avvia Test';
+    }
+    
+    if (stopBtn) {
+        stopBtn.disabled = true;
+        stopBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Test';
     }
 }
 

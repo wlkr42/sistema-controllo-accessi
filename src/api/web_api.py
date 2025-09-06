@@ -765,7 +765,7 @@ def api_hardware_test_reader():
 @require_auth()
 def api_hardware_stop_reader():
     """Ferma il test/monitor del lettore"""
-    return hardware_tests.stop_reader_test()
+    return hardware_tests.stop_reader()
 
 # ===============================
 # API ENDPOINTS - ODOO SYNC
