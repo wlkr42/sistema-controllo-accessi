@@ -183,11 +183,6 @@ def dashboard() -> FlaskResponse:
                 'url': '/configurazione-orari',
                 'icon': 'fas fa-clock',
                 'text': 'Configurazione Orari'
-            },
-            {
-                'url': '/test-accessi',
-                'icon': 'fas fa-door-open',
-                'text': 'Test Accessi'
             }
         ]
     

@@ -526,6 +526,21 @@ date.toLocaleString('it-IT', {
 
 ---
 
+## 🎨 Miglioramenti UI Dashboard (v2.7.1)
+
+### Modifiche Dashboard
+- **Rimosso pulsante Test Accessi**: Eliminato dalla sezione admin per ridurre ridondanza
+- **Uniformati colori pulsanti**: Schema colori coerente per tutti i pulsanti dashboard
+  - Blu (primary): Navigazione principale
+  - Verde (success): Azioni positive (Backup, Export)
+  - Rosso (danger): Azioni critiche
+
+### File Modificati
+- `/src/api/web_api.py`: Rimosso Test Accessi dai menu_items
+- `/src/api/dashboard_templates.py`: Aggiornati stili pulsanti
+
+---
+
 ## 👤 Sistema Profili Utente (v2.7.0)
 
 ### Campi Profilo Estesi

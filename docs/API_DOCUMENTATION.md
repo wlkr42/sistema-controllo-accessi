@@ -749,5 +749,5 @@ Elimina utente di sistema.
 
 ---
 
-**API Version**: 2.7.0  
+**API Version**: 2.7.1  
 **Last Updated**: 2025-09-06

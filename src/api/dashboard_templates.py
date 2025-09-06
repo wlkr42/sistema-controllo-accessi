@@ -212,7 +212,7 @@ def get_dashboard_template():
                             {% endfor %}
                             
                             <!-- Menu items fissi -->
-                            <a href="/log-accessi" class="btn btn-outline-warning">
+                            <a href="/log-accessi" class="btn btn-outline-primary">
                                 <i class="fas fa-history"></i> Log Accessi
                             </a>
                             <a href="/admin/config" class="btn btn-outline-primary">

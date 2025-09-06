@@ -1,8 +1,14 @@
-# Sistema Controllo Accessi - v2.7.0
+# Sistema Controllo Accessi - v2.7.1
 
 Sistema completo per il controllo degli accessi tramite tessera sanitaria con gestione hardware, interfaccia web e funzionalità avanzate.
 
-## ✨ Ultime Novità (v2.7.0)
+## ✨ Ultime Novità (v2.7.1)
+
+- 🎨 **UI Dashboard Migliorata**: Rimosso pulsante Test Accessi ridondante
+- 🎨 **Colori Uniformati**: Tutti i pulsanti dashboard ora con schema colori coerente
+- 🔧 **Pulizia Codice**: Rimossi elementi UI non necessari
+
+## ✨ Novità v2.7.0
 
 - 👤 **Profili Utente Estesi**: Sistema completo gestione profili con avatar
 - 🔐 **Password Management Avanzato**: Validazione rigorosa, reset via email, storico password
