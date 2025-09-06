@@ -212,7 +212,10 @@ def test_integrated(get_db_connection):
                 
                 # Ottieni ultimo ID dal database
                 import sqlite3
-                db_path = '/opt/access_control/src/access.db'
+                import sys
+                sys.path.insert(0, '/opt/access_control/src')
+                from core.db_config import CURRENT_DB_PATH
+                db_path = CURRENT_DB_PATH
                 last_access_id = 0
                 try:
                     conn = sqlite3.connect(db_path)
@@ -488,7 +491,8 @@ def test_reader():
             
             # Ottieni ultimo ID dal database per monitoraggio
             import sqlite3
-            db_path = '/opt/access_control/src/access.db'
+            # Usa il path già importato sopra
+            # db_path è già definito da CURRENT_DB_PATH
             try:
                 conn = sqlite3.connect(db_path)
                 cursor = conn.cursor()

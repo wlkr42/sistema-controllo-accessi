@@ -116,8 +116,8 @@ app.config.update(
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
 
-# Database path persistente
-DB_PATH = '/opt/access_control/src/access.db'
+# Database path - importato dalla configurazione centralizzata
+from core.db_config import CURRENT_DB_PATH as DB_PATH
 
 # IMPORTA I MODULI DOPO aver definito le funzioni condivise
 from api.modules.profilo import profilo_bp

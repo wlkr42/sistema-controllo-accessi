@@ -24,7 +24,7 @@ class HardwareConfig:
 @dataclass
 class DatabaseConfig:
     """Configurazioni database"""
-    path: str = "/opt/access_control/src/access.db"
+    path: str = "/opt/access_control/data/access.db"
     backup_interval: int = 86400  # 24 ore
     max_backups: int = 30
     vacuum_interval: int = 604800  # 7 giorni

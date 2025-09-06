@@ -10,8 +10,10 @@ import os
 
 log_management_bp = Blueprint('log_management', __name__)
 
-# Database path
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'access.db')
+# Database path - importato dalla configurazione centralizzata
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+from core.db_config import CURRENT_DB_PATH as DB_PATH
 
 def get_db_connection():
     """Connessione database locale"""

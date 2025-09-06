@@ -14,8 +14,9 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
-# Percorso database
-DB_PATH = "/opt/access_control/src/access.db"
+# Percorso database - importato dalla configurazione centralizzata
+sys.path.insert(0, '/opt/access_control/src')
+from core.db_config import CURRENT_DB_PATH as DB_PATH
 
 # Codice fiscale da verificare
 CODICE_FISCALE = "CLBMTR66S65D086I"

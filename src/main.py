@@ -303,9 +303,9 @@ class AccessControlSystem:
             self.card_reader = ReaderFactory.create_reader_by_key(device_key=card_device_key, device_path=card_device_path)
             logger.info(f"✅ Lettore inizializzato: {self.card_reader.__class__.__name__ if self.card_reader else 'Nessun lettore'}")
             
-            # Database
-            db_path = project_root / "src" / "access.db"
-            self.database = DatabaseManager(str(db_path))
+            # Database - usa il percorso dalla configurazione centralizzata
+            from core.db_config import CURRENT_DB_PATH
+            self.database = DatabaseManager(CURRENT_DB_PATH)
             
             if not self.database.health_check():
                 logger.error("❌ Database non funzionante")

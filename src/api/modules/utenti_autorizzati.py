@@ -10,8 +10,10 @@ from ..utils import require_auth, require_permission
 
 utenti_autorizzati_bp = Blueprint('utenti_autorizzati', __name__)
 
-# Database path
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'access.db')
+# Database path - importato dalla configurazione centralizzata
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+from core.db_config import CURRENT_DB_PATH as DB_PATH
 
 def get_db_connection():
     """Connessione al database"""

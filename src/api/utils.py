@@ -1,9 +1,9 @@
 from flask import jsonify, session, redirect, request
 import sqlite3
 import os
-
-# Database path
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'access.db')
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from core.db_config import CURRENT_DB_PATH as DB_PATH
 
 def get_db_connection():
     """Connessione database"""

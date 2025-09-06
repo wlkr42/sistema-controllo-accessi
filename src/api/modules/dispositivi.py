@@ -773,9 +773,11 @@ def api_test_database():
     """Test connessione database"""
     try:
         import sqlite3
-        db_path = project_root / "src" / "access.db"
+        import sys
+        sys.path.insert(0, str(project_root / "src"))
+        from core.db_config import CURRENT_DB_PATH
         
-        with sqlite3.connect(str(db_path)) as conn:
+        with sqlite3.connect(CURRENT_DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM utenti_autorizzati")
             count = cursor.fetchone()[0]

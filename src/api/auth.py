@@ -24,8 +24,10 @@ USER_ROLES = {
     }
 }
 
-# Path del database
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'access.db')
+# Path del database - importato dalla configurazione centralizzata
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from core.db_config import CURRENT_DB_PATH as DB_PATH
 
 def get_db_connection():
     """Connessione al database"""

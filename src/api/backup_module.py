@@ -326,7 +326,8 @@ def create_complete_backup(operation_id):
                                   ignore=shutil.ignore_patterns('*.pyc', '__pycache__', '*.log'))
         
         # Database (se non troppo grande)
-        db_path = PROJECT_ROOT / "src" / "access.db"
+        from core.db_config import CURRENT_DB_PATH
+        db_path = Path(CURRENT_DB_PATH)
         if db_path.exists() and db_path.stat().st_size < 500 * 1024 * 1024:
             backup_operations[operation_id]['message'] = 'Backup database...'
             shutil.copy2(db_path, temp_dir / "access.db")
@@ -371,7 +372,8 @@ def create_db_backup(operation_id):
     backup_operations[operation_id]['message'] = 'Backup database...'
     backup_operations[operation_id]['progress'] = 50
     
-    db_source = PROJECT_ROOT / "src" / "access.db"
+    from core.db_config import CURRENT_DB_PATH
+    db_source = Path(CURRENT_DB_PATH)
     db_backup = BACKUP_DIR / f"access_{timestamp}.db"
     
     if db_source.exists():
