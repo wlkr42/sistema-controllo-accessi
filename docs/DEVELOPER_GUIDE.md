@@ -332,6 +332,17 @@ git push origin feature/nome-feature
 
 ## 📦 Sistema Backup
 
+### Flask Blueprint Disponibili
+- **profilo_bp**: Gestione profilo utente corrente
+- **user_management_bp**: Gestione utenti sistema 
+- **log_management_bp**: Gestione e visualizzazione log
+- **utenti_autorizzati_bp**: Gestione utenti abilitati accesso fisico
+- **system_users_bp**: Gestione utenti di sistema
+- **activities_bp**: Log attività e azioni
+- **configurazione_accessi_bp**: Configurazione orari, limiti, test
+- **backup_bp**: Gestione backup e restore
+- **sync_bp**: Gestione sincronizzazione server (Odoo)
+
 ### Architettura
 Il sistema di backup è modulare e supporta:
 - **Backup locali**: Completi (sistema + DB) o solo database
@@ -391,6 +402,46 @@ curl -X POST http://localhost:5000/api/backup/integrity/check
 curl -X POST http://localhost:5000/api/backup/retention/apply
 ```
 
+## 🔄 Sistema Server Sync
+
+### Architettura
+Il sistema di sincronizzazione server gestisce:
+- **Connessione Server Remoto**: Configurazione dinamica dei parametri di connessione
+- **Sincronizzazione automatica**: Schedulazione configurabile (1h, 6h, 12h, 24h, custom)
+- **Database storage**: Configurazione salvata in `system_settings` invece che JSON
+- **Log real-time**: Monitoraggio live delle operazioni di sincronizzazione
+
+### File Principali
+- `src/api/modules/sync_module.py`: Core della sincronizzazione (Blueprint Flask)
+- `src/api/admin_templates.py`: Template UI (sezione ADMIN_SERVER_SYNC_TEMPLATE)
+- `src/external/odoo_partner_connector.py`: Connettore per sincronizzazione cittadini
+- Database: `system_settings` table con chiavi `sync.*`
+
+### API Endpoints
+```
+/sync/config     # GET/POST - Configurazione server
+/sync/status     # GET - Stato connessione
+/sync/test       # POST - Test connessione
+/sync/manual     # POST - Sincronizzazione manuale
+/sync/schedule   # POST - Schedulazione automatica
+/sync/logs       # GET - Log sincronizzazione
+```
+
+### Configurazione Database
+Le configurazioni sono salvate nella tabella `system_settings`:
+- `sync.url`: URL server remoto
+- `sync.database`: Nome database
+- `sync.username`: Username
+- `sync.password`: Password (criptata)
+- `sync.comune`: Filtro comune (default: Rende)
+- `sync.sync_enabled`: Abilitazione sync automatica
+- `sync.sync_interval_hours`: Intervallo in ore
+- `sync.last_sync`: Timestamp ultima sincronizzazione
+
+### Accesso UI
+- **Tab in Configurazioni**: `/admin/config` → tab "Server Sync"
+- **Pagina dedicata**: `/admin/sync`
+
 ## 🔍 Troubleshooting Comune
 
 ### Problema: Timestamp sbagliati nei log
@@ -425,4 +476,48 @@ Per problemi o domande sul sistema:
 
 ---
 
-**Ultimo aggiornamento**: 2025-09-05 - Versione 2.1.0
+## 👥 Sistema Gestione Utenti Autorizzati
+
+### Architettura
+Il sistema di gestione utenti autorizzati gestisce:
+- **Visualizzazione utenti**: Lista completa con ricerca e filtri
+- **Paginazione dinamica**: Supporto per 30, 50, 100 elementi o tutti
+- **Gestione stato**: Attivazione/disattivazione utenti
+- **Formato date**: Visualizzazione completa con data e ora
+
+### File Principali
+- `src/api/modules/utenti_autorizzati.py`: Blueprint Flask per gestione utenti
+- `src/api/templates/utenti_autorizzati.html`: Template HTML della pagina
+- `src/api/static/js/utenti_autorizzati.js`: Logica JavaScript frontend
+
+### API Endpoints
+```python
+/api/utenti-autorizzati/list     # GET - Lista con paginazione e ricerca
+/api/utenti-autorizzati/stats    # GET - Statistiche utenti
+/api/utenti-autorizzati/toggle-active  # POST - Attiva/disattiva utente
+```
+
+### Paginazione
+La paginazione supporta:
+- Query parameter `page`: numero pagina (default: 1)
+- Query parameter `per_page`: elementi per pagina (30, 50, 100, 'all')
+- Query parameter `search`: filtro per nome o codice fiscale
+
+### Formato Date
+Le date vengono visualizzate in formato italiano completo:
+```javascript
+// Formato: DD/MM/YYYY HH:MM:SS
+date.toLocaleString('it-IT', {
+    day: '2-digit',
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+});
+```
+
+---
+
+**Ultimo aggiornamento**: 2025-09-06 - Versione 2.4.0

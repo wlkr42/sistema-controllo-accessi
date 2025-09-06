@@ -1,5 +1,58 @@
 # Changelog - Sistema Controllo Accessi
 
+## [2.5.0] - 2025-09-06
+
+### 🎉 Nuove Funzionalità
+
+#### 🔄 Sistema Server Sync
+- **Configurazione Dinamica Server**:
+  - Gestione parametri connessione da interfaccia web
+  - Salvataggio configurazione in database (system_settings)
+  - Test connessione integrato
+  - Log real-time delle operazioni
+
+- **Sincronizzazione Automatica**:
+  - Schedulazione configurabile (ore personalizzabili)
+  - Sincronizzazione manuale on-demand
+  - Import automatico cittadini autorizzati
+  - Statistiche dettagliate sincronizzazione
+
+- **Interfaccia Dedicata**:
+  - Tab "Server Sync" in configurazione admin
+  - Dashboard stato connessione
+  - Visualizzazione log sincronizzazione
+  - Controlli abilitazione/disabilitazione
+
+#### 👥 Miglioramenti Gestione Utenti Autorizzati
+- **Sistema Paginazione**:
+  - Dropdown selezione elementi (30, 50, 100, tutti)
+  - Navigazione pagine con controlli avanzati
+  - Indicatore elementi visualizzati
+  - Mantenimento stato ricerca
+
+- **Visualizzazione Date Corretta**:
+  - Formato italiano completo (DD/MM/YYYY HH:MM:SS)
+  - Visualizzazione data e ora inserimento reale
+  - Aggiornamento timestamp consistente
+
+- **Interfaccia Ottimizzata**:
+  - Rimosse colonne non necessarie (Modificato Da, Stato)
+  - Evidenziazione righe utenti inattivi
+  - Migliorata responsività tabella
+
+### 🐛 Bug Fix
+- Corretta visualizzazione date inserimento utenti
+- Fix formato timestamp in formato italiano
+- Risolto problema colonne duplicate non necessarie
+- Corretto salvataggio configurazione Server Sync in database
+
+### 🔧 Miglioramenti Tecnici
+- Migrazione configurazione sync da JSON a database
+- Nuovo modulo `sync_module.py` con gestione database
+- JavaScript ottimizzato per paginazione (`utenti_autorizzati.js`)
+- API endpoint con supporto paginazione nativo
+- Blueprint Flask per modularità codice
+
 ## [2.4.0] - 2025-09-06
 
 ### 🎉 Nuove Funzionalità

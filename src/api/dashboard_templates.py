@@ -617,6 +617,11 @@ ADMIN_CONFIG_TEMPLATE = """
                     <i class="fas fa-clock"></i> Orologio
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/sync">
+                    <i class="fas fa-sync-alt"></i> Server Sync
+                </a>
+            </li>
         </ul>
 
         <!-- Tab Content -->

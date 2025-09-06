@@ -8,6 +8,7 @@ import time
 import signal
 import logging
 import threading
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -122,6 +123,27 @@ class MockConfig:
 class AccessControlSystem:
     """Sistema controllo accessi ISOLA RAEE con integrazione Odoo + USB-RLY08"""
     
+    def load_sync_config(self):
+        """Carica configurazione sync da file JSON"""
+        config_file = Path('/opt/access_control/data/sync_config.json')
+        if config_file.exists():
+            try:
+                with open(config_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Errore caricamento config sync: {e}")
+        
+        # Fallback su configurazione default
+        return {
+            'url': 'https://app.calabramaceri.it',
+            'database': 'cmapp',
+            'username': 'controllo-accessi@calabramaceri.it',
+            'password': 'AcC3ss0C0ntr0l!2025#Rnd',
+            'comune': 'Rende',
+            'sync_enabled': False,
+            'sync_interval_hours': 12
+        }
+    
     def __init__(self):
         self.running = False
         self.last_sync_time = None
@@ -153,15 +175,8 @@ class AccessControlSystem:
         self.database = None
         self.odoo_connector = None
         
-        # Configurazione Odoo CORRETTA
-        self.odoo_config = {
-            'url': 'https://app.calabramaceri.it',
-            'database': 'cmapp',
-            'username': 'controllo-accessi@calabramaceri.it',
-            'password': 'AcC3ss0C0ntr0l!2025#Rnd',
-            'comune': 'Rende',
-            'sync_interval_hours': 12
-        }
+        # Configurazione Odoo - Carica da file JSON
+        self.odoo_config = self.load_sync_config()
         
         # Configurazione ISOLA RAEE
         self.raee_config = {
@@ -352,15 +367,38 @@ class AccessControlSystem:
             return False
     
     def start_auto_sync(self):
-        """Avvia sincronizzazione automatica"""
+        """Avvia sincronizzazione automatica se abilitata"""
+        # Ricarica configurazione per verificare se sync è abilitata
+        self.odoo_config = self.load_sync_config()
+        
+        if not self.odoo_config.get('sync_enabled', False):
+            logger.info("🔄 Sincronizzazione automatica disabilitata da configurazione")
+            return
+        
         def sync_worker():
             while self.running:
                 try:
+                    # Ricarica config per eventuali modifiche
+                    self.odoo_config = self.load_sync_config()
+                    
+                    if not self.odoo_config.get('sync_enabled', False):
+                        logger.info("🔄 Sincronizzazione automatica disabilitata")
+                        break
+                    
                     sleep_hours = self.odoo_config['sync_interval_hours']
                     logger.info(f"⏰ Prossima sync automatica in {sleep_hours} ore")
-                    time.sleep(sleep_hours * 3600)
                     
-                    if self.running:
+                    # Sleep in chunks per permettere controllo configurazione
+                    for _ in range(sleep_hours * 60):  # Check ogni minuto
+                        if not self.running:
+                            break
+                        time.sleep(60)
+                        # Ricarica config per eventuali modifiche
+                        self.odoo_config = self.load_sync_config()
+                        if not self.odoo_config.get('sync_enabled', False):
+                            break
+                    
+                    if self.running and self.odoo_config.get('sync_enabled', False):
                         self.perform_sync()
                     
                 except Exception as e:

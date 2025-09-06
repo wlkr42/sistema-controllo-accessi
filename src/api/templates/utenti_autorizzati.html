@@ -213,8 +213,7 @@
             text-align: center;
         }
         .search-box {
-            max-width: 500px;
-            margin: 20px auto;
+            position: relative;
         }
         .stats-card {
             transition: all 0.3s ease;
@@ -314,14 +313,29 @@
         </div>
     </div>
     
-    <!-- Ricerca -->
-    <div class="search-box position-relative">
-        <input type="text" 
-               id="search-input" 
-               class="form-control form-control-lg" 
-               placeholder="Cerca per nome completo o codice fiscale..."
-               autocomplete="off">
-        <i class="fas fa-times search-clear" id="search-clear"></i>
+    <!-- Ricerca e Paginazione -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <div class="search-box position-relative">
+                <input type="text" 
+                       id="search-input" 
+                       class="form-control form-control-lg" 
+                       placeholder="Cerca per nome completo o codice fiscale..."
+                       autocomplete="off">
+                <i class="fas fa-times search-clear" id="search-clear"></i>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0">Mostra:</label>
+                <select id="per-page-select" class="form-select" style="width: auto;">
+                    <option value="30">30 elementi</option>
+                    <option value="50">50 elementi</option>
+                    <option value="100">100 elementi</option>
+                    <option value="all">Tutti</option>
+                </select>
+            </div>
+        </div>
     </div>
     
     <!-- Tabella Utenti -->
@@ -334,9 +348,7 @@
                     <th>Data Inserimento</th>
                     <th>Ultimo Aggiornamento</th>
                     <th>Creato Da</th>
-                    <th>Modificato Da</th>
                     <th>Note</th>
-                    <th>Stato</th>
                     <th>Azioni</th>
                 </tr>
             </thead>
@@ -345,6 +357,13 @@
             </tbody>
         </table>
     </div>
+    
+    <!-- Paginazione -->
+    <nav aria-label="Navigazione pagine" id="pagination-container" class="mt-3">
+        <ul class="pagination justify-content-center">
+            <!-- Generato dinamicamente -->
+        </ul>
+    </nav>
     
     <!-- Loading Spinner -->
     <div id="loading-spinner" class="text-center d-none">

@@ -1,13 +1,20 @@
-# Sistema Controllo Accessi - v2.1.0
+# Sistema Controllo Accessi - v2.5.0
 
 Sistema completo per il controllo degli accessi tramite tessera sanitaria con gestione hardware, interfaccia web e funzionalità avanzate.
 
-## ✨ Ultime Novità (v2.1.0)
+## ✨ Ultime Novità (v2.5.0)
 
-- 🕐 **Gestione Timezone Configurabile**: Nuova sezione Orologio per configurare fuso orario
-- 📊 **Export Avanzato**: Esportazione log in CSV, Excel e PDF
-- 🔧 **Fix Timestamp**: Correzione visualizzazione ora locale (era 2 ore indietro)
-- 📚 **Documentazione Completa**: Nuova cartella `/docs` con guide dettagliate
+- 🔄 **Server Sync**: Sincronizzazione automatica con server remoto configurabile
+- 📄 **Paginazione Utenti**: Sistema paginazione con selezione elementi (30/50/100/tutti)
+- 🕐 **Fix Date Visualizzazione**: Formato date completo con ora (DD/MM/YYYY HH:MM:SS)
+- 🗂️ **Interfaccia Ottimizzata**: Rimosse colonne non necessarie, migliore UX
+
+## ✨ Funzionalità v2.4.0
+
+- 📦 **Sistema Backup Enterprise**: Backup schedulati multi-livello con cloud
+- 🔐 **Verifica Integrità**: Controllo automatico checksum backup
+- ☁️ **Cloud Storage**: Supporto AWS S3, Google Cloud, Azure, FTP/SFTP
+- 📊 **Retention Policies**: Gestione automatica spazio e pulizia
 
 ## 🚀 Quick Start
 

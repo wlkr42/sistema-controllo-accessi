@@ -55,6 +55,7 @@ from api.modules.system_users import system_users_bp
 from api.modules.activities import activities_bp
 from api.modules.configurazione_accessi import configurazione_accessi_bp, verifica_orario, verifica_limite_mensile
 from api.backup_module import backup_bp
+from api.modules.sync_module import sync_bp
 
 # Definizione dei tipi personalizzati
 FlaskResponse = Union[Response, str, Tuple[Union[Dict[str, Any], str], int]]
@@ -152,6 +153,7 @@ app.register_blueprint(system_users_bp)
 app.register_blueprint(activities_bp)
 app.register_blueprint(configurazione_accessi_bp)
 app.register_blueprint(backup_bp)
+app.register_blueprint(sync_bp, url_prefix='/sync')
 
 # ===============================
 # ROUTES PRINCIPALI
@@ -986,6 +988,18 @@ def log_accessi_page():
     """Pagina Log Accessi"""
     from log_accessi_template import LOG_ACCESSI_TEMPLATE
     return LOG_ACCESSI_TEMPLATE
+
+@app.route('/admin/sync')
+@require_auth()
+@require_permission('all')  # Solo admin
+def admin_sync():
+    """Server Sync Configuration - Solo Admin"""
+    # Forza reload del template per sviluppo
+    import importlib
+    import api.admin_templates
+    importlib.reload(api.admin_templates)
+    from api.admin_templates import ADMIN_SERVER_SYNC_TEMPLATE
+    return render_template_string(ADMIN_SERVER_SYNC_TEMPLATE, session=session)
 
 @app.route('/admin/backup')
 @require_auth()

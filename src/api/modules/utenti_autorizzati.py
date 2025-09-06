@@ -35,8 +35,16 @@ def utenti_autorizzati_page():
 @utenti_autorizzati_bp.route('/api/utenti-autorizzati/list')
 @require_auth()
 def api_list_utenti_autorizzati():
-    """Lista utenti autorizzati con filtro"""
+    """Lista utenti autorizzati con filtro e paginazione"""
     search = request.args.get('search', '').strip().upper()
+    page = int(request.args.get('page', 1))
+    per_page = request.args.get('per_page', '30')
+    
+    # Gestisci 'all' per mostrare tutti i risultati
+    if per_page == 'all':
+        per_page = 10000  # Un numero molto grande
+    else:
+        per_page = int(per_page)
     
     conn = get_db_connection()
     if not conn:
@@ -49,7 +57,7 @@ def api_list_utenti_autorizzati():
         query = """
             SELECT codice_fiscale, nome, data_inserimento,
                    data_aggiornamento, attivo, note,
-                   creato_da, modificato_da
+                   creato_da
             FROM utenti_autorizzati
             WHERE 1=1
         """
@@ -66,8 +74,15 @@ def api_list_utenti_autorizzati():
             search_param = f"%{search}%"
             params.extend([search_param, search_param])
         
-        # Ordina per nome
+        # Prima conta il totale
+        count_query = f"SELECT COUNT(*) as total FROM ({query})"
+        cursor.execute(count_query, params)
+        total_count = cursor.fetchone()['total']
+        
+        # Ordina per nome e applica paginazione
         query += " ORDER BY nome"
+        query += " LIMIT ? OFFSET ?"
+        params.extend([per_page, (page - 1) * per_page])
         
         cursor.execute(query, params)
         results = cursor.fetchall()
@@ -81,14 +96,16 @@ def api_list_utenti_autorizzati():
                 'data_aggiornamento': row['data_aggiornamento'],
                 'attivo': bool(row['attivo']),
                 'note': row['note'],
-                'creato_da': row['creato_da'],
-                'modificato_da': row['modificato_da']
+                'creato_da': row['creato_da']
             })
         
         return jsonify({
             'success': True,
             'utenti': utenti,
-            'total': len(utenti)
+            'total': total_count,
+            'page': page,
+            'per_page': per_page if per_page != 10000 else 'all',
+            'total_pages': (total_count + per_page - 1) // per_page if per_page != 10000 else 1
         })
         
     except Exception as e:

@@ -6,11 +6,19 @@ const searchClear = document.getElementById('search-clear');
 const tableBody = document.getElementById('users-table-body');
 const loadingSpinner = document.getElementById('loading-spinner');
 const noResults = document.getElementById('no-results');
+const perPageSelect = document.getElementById('per-page-select');
+const paginationContainer = document.getElementById('pagination-container');
 
 // Statistiche
 const statTotale = document.getElementById('stat-totale');
 const statAttivi = document.getElementById('stat-attivi');
 const statNuovi = document.getElementById('stat-nuovi');
+
+// Stato paginazione
+let currentPage = 1;
+let currentPerPage = 30;
+let currentSearch = '';
+let totalPages = 1;
 
 // Debounce per la ricerca
 let searchTimeout = null;
@@ -25,13 +33,24 @@ document.addEventListener('DOMContentLoaded', () => {
 searchInput.addEventListener('input', (e) => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        loadUsers(e.target.value);
+        currentSearch = e.target.value;
+        currentPage = 1; // Reset alla prima pagina quando si cerca
+        loadUsers();
     }, 300);
 });
 
 // Event listener per pulire la ricerca
 searchClear.addEventListener('click', () => {
     searchInput.value = '';
+    currentSearch = '';
+    currentPage = 1;
+    loadUsers();
+});
+
+// Event listener per cambio elementi per pagina
+perPageSelect.addEventListener('change', (e) => {
+    currentPerPage = e.target.value;
+    currentPage = 1; // Reset alla prima pagina
     loadUsers();
 });
 
@@ -51,17 +70,24 @@ async function loadStats() {
     }
 }
 
-// Carica utenti con filtro opzionale
-async function loadUsers(search = '') {
+// Carica utenti con paginazione
+async function loadUsers() {
     showLoading(true);
     
     try {
-        const url = `/api/utenti-autorizzati/list${search ? `?search=${encodeURIComponent(search)}` : ''}`;
+        const params = new URLSearchParams();
+        if (currentSearch) params.append('search', currentSearch);
+        params.append('page', currentPage);
+        params.append('per_page', currentPerPage);
+        
+        const url = `/api/utenti-autorizzati/list?${params.toString()}`;
         const response = await fetch(url);
         const data = await response.json();
         
         if (data.success) {
             renderUsers(data.utenti);
+            totalPages = data.total_pages;
+            updatePagination(data.page, data.total_pages, data.total);
             noResults.classList.toggle('d-none', data.utenti.length > 0);
         } else {
             showError('Errore caricamento utenti');
@@ -74,6 +100,31 @@ async function loadUsers(search = '') {
     }
 }
 
+// Formatta data italiana con ora
+function formatDateTimeIT(dateString) {
+    if (!dateString) return '-';
+    
+    try {
+        // Crea oggetto Date dal timestamp
+        const date = new Date(dateString);
+        
+        // Formatta data e ora in formato italiano
+        const options = {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        };
+        
+        return date.toLocaleString('it-IT', options);
+    } catch (error) {
+        return dateString; // Ritorna la stringa originale se c'è un errore
+    }
+}
+
 // Renderizza tabella utenti
 function renderUsers(users) {
     tableBody.innerHTML = '';
@@ -81,34 +132,128 @@ function renderUsers(users) {
     users.forEach(user => {
         const row = document.createElement('tr');
         
-        // Formatta date
-        const dataInserimento = new Date(user.data_inserimento).toLocaleDateString('it-IT');
-        const dataAggiornamento = new Date(user.data_aggiornamento).toLocaleDateString('it-IT');
+        // Formatta date con ora
+        const dataInserimento = formatDateTimeIT(user.data_inserimento);
+        const dataAggiornamento = formatDateTimeIT(user.data_aggiornamento);
         
-        // Stato attivo/inattivo
-        const statoBadge = user.attivo ?
-            '<span class="badge bg-success status-badge">Attivo</span>' :
-            '<span class="badge bg-danger status-badge">Inattivo</span>';
+        // Bottone azione basato sullo stato
+        const actionButton = user.attivo ?
+            `<button class="btn btn-sm btn-danger" title="Disattiva"
+                    onclick="toggleUserStatus('${user.codice_fiscale}', ${user.attivo})">
+                <i class="fas fa-ban"></i>
+            </button>` :
+            `<button class="btn btn-sm btn-success" title="Attiva"
+                    onclick="toggleUserStatus('${user.codice_fiscale}', ${user.attivo})">
+                <i class="fas fa-check"></i>
+            </button>`;
         
         row.innerHTML = `
             <td>${user.codice_fiscale}</td>
             <td>${user.nome || '-'}</td>
             <td>${dataInserimento}</td>
             <td>${dataAggiornamento}</td>
-            <td>${user.creato_da || '-'}</td>
-            <td>${user.modificato_da || '-'}</td>
+            <td>${user.creato_da || 'Sync Odoo'}</td>
             <td>${user.note || '-'}</td>
-            <td>${statoBadge}</td>
-            <td>
-                <button class="btn btn-sm btn-${user.attivo ? 'danger' : 'success'}"
-                        onclick="toggleUserStatus('${user.codice_fiscale}', ${user.attivo})">
-                    <i class="fas fa-${user.attivo ? 'ban' : 'check'}"></i>
-                </button>
-            </td>
+            <td>${actionButton}</td>
         `;
+        
+        // Evidenzia riga se utente non attivo
+        if (!user.attivo) {
+            row.classList.add('table-danger', 'opacity-75');
+        }
         
         tableBody.appendChild(row);
     });
+}
+
+// Aggiorna controlli paginazione
+function updatePagination(page, totalPages, totalItems) {
+    const pagination = paginationContainer.querySelector('.pagination');
+    pagination.innerHTML = '';
+    
+    // Info elementi visualizzati
+    const startItem = (page - 1) * (currentPerPage === 'all' ? totalItems : parseInt(currentPerPage)) + 1;
+    const endItem = Math.min(page * (currentPerPage === 'all' ? totalItems : parseInt(currentPerPage)), totalItems);
+    
+    // Aggiungi info totale
+    const infoItem = document.createElement('li');
+    infoItem.className = 'page-item disabled';
+    infoItem.innerHTML = `<span class="page-link">Mostrando ${startItem}-${endItem} di ${totalItems}</span>`;
+    pagination.appendChild(infoItem);
+    
+    // Se ci sono più pagine, mostra i controlli
+    if (totalPages > 1) {
+        // Pulsante precedente
+        const prevItem = document.createElement('li');
+        prevItem.className = `page-item ${page === 1 ? 'disabled' : ''}`;
+        prevItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${page - 1}); return false;">
+            <i class="fas fa-chevron-left"></i>
+        </a>`;
+        pagination.appendChild(prevItem);
+        
+        // Numeri pagina (mostra max 5 pagine)
+        let startPage = Math.max(1, page - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+        
+        // Prima pagina se non visibile
+        if (startPage > 1) {
+            const firstItem = document.createElement('li');
+            firstItem.className = 'page-item';
+            firstItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(1); return false;">1</a>`;
+            pagination.appendChild(firstItem);
+            
+            if (startPage > 2) {
+                const dots = document.createElement('li');
+                dots.className = 'page-item disabled';
+                dots.innerHTML = '<span class="page-link">...</span>';
+                pagination.appendChild(dots);
+            }
+        }
+        
+        // Pagine
+        for (let i = startPage; i <= endPage; i++) {
+            const pageItem = document.createElement('li');
+            pageItem.className = `page-item ${i === page ? 'active' : ''}`;
+            pageItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>`;
+            pagination.appendChild(pageItem);
+        }
+        
+        // Ultima pagina se non visibile
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const dots = document.createElement('li');
+                dots.className = 'page-item disabled';
+                dots.innerHTML = '<span class="page-link">...</span>';
+                pagination.appendChild(dots);
+            }
+            
+            const lastItem = document.createElement('li');
+            lastItem.className = 'page-item';
+            lastItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${totalPages}); return false;">${totalPages}</a>`;
+            pagination.appendChild(lastItem);
+        }
+        
+        // Pulsante successivo
+        const nextItem = document.createElement('li');
+        nextItem.className = `page-item ${page === totalPages ? 'disabled' : ''}`;
+        nextItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${page + 1}); return false;">
+            <i class="fas fa-chevron-right"></i>
+        </a>`;
+        pagination.appendChild(nextItem);
+    }
+}
+
+// Cambia pagina
+function changePage(page) {
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    loadUsers();
+    // Scroll to top della tabella
+    window.scrollTo({ top: 200, behavior: 'smooth' });
 }
 
 // Attiva/disattiva utente
@@ -126,7 +271,7 @@ async function toggleUserStatus(codiceFiscale, currentStatus) {
         
         if (data.success) {
             // Ricarica dati e statistiche
-            loadUsers(searchInput.value);
+            loadUsers();
             loadStats();
             
             // Notifica

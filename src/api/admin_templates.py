@@ -1562,3 +1562,517 @@ ADMIN_BACKUP_TEMPLATE = """
 </body>
 </html>
 """
+
+# Template per Server Sync Configuration  
+ADMIN_SERVER_SYNC_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Sync - Sistema Controllo Accessi</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/dashboard.css" rel="stylesheet">
+    <style>
+        .sync-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .sync-status.connected {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .sync-status.disconnected {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .log-console {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .config-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .schedule-option {
+            padding: 10px;
+            border-left: 3px solid #007bff;
+            margin-bottom: 10px;
+        }
+        .test-connection-btn {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-sync-alt me-2"></i>Server Sync Configuration
+            </span>
+            <div class="d-flex align-items-center gap-3">
+                <a href="/admin/config" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left"></i> Torna a Configurazione
+                </a>
+                <a href="/" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Status Card -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div id="sync-status" class="sync-status disconnected">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5><i class="fas fa-server me-2"></i>Stato Connessione</h5>
+                            <p class="mb-0">
+                                <span id="connection-status">Non connesso</span> | 
+                                Ultima sincronizzazione: <span id="last-sync">Mai</span>
+                            </p>
+                        </div>
+                        <div>
+                            <button class="btn btn-primary" onclick="testConnection()">
+                                <i class="fas fa-plug"></i> Test Connessione
+                            </button>
+                            <button class="btn btn-success" onclick="manualSync()">
+                                <i class="fas fa-sync"></i> Sincronizza Ora
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Configurazione Server -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-server me-2"></i>Configurazione Server</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="server-config-form">
+                            <div class="mb-3">
+                                <label class="form-label">URL Server</label>
+                                <input type="text" class="form-control" id="server-url" 
+                                       placeholder="https://server.example.com" required>
+                                <small class="text-muted">URL completo del server remoto</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Database</label>
+                                <input type="text" class="form-control" id="server-database" 
+                                       placeholder="nome_database" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" id="server-username" 
+                                       placeholder="username" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="server-password" 
+                                           placeholder="password" required>
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="togglePassword('server-password')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Filtro Comune</label>
+                                <input type="text" class="form-control" id="server-comune" 
+                                       placeholder="Rende" value="Rende" required>
+                                <small class="text-muted">Comune per filtrare i cittadini</small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save"></i> Salva Configurazione
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedulazione Sincronizzazione -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-clock me-2"></i>Schedulazione Automatica</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="sync-enabled">
+                                <label class="form-check-label" for="sync-enabled">
+                                    Abilita sincronizzazione automatica
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="schedule-option">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sync-schedule" 
+                                       id="sync-hourly" value="hourly">
+                                <label class="form-check-label" for="sync-hourly">
+                                    <strong>Ogni ora</strong>
+                                    <br><small class="text-muted">Sincronizzazione ogni 60 minuti</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="schedule-option">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sync-schedule" 
+                                       id="sync-6hours" value="6hours">
+                                <label class="form-check-label" for="sync-6hours">
+                                    <strong>Ogni 6 ore</strong>
+                                    <br><small class="text-muted">4 sincronizzazioni al giorno</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="schedule-option">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sync-schedule" 
+                                       id="sync-12hours" value="12hours" checked>
+                                <label class="form-check-label" for="sync-12hours">
+                                    <strong>Ogni 12 ore</strong>
+                                    <br><small class="text-muted">2 sincronizzazioni al giorno (default)</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="schedule-option">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sync-schedule" 
+                                       id="sync-daily" value="daily">
+                                <label class="form-check-label" for="sync-daily">
+                                    <strong>Giornaliero</strong>
+                                    <br><small class="text-muted">Una volta al giorno alle 03:00</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="schedule-option">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="radio" name="sync-schedule" 
+                                       id="sync-custom" value="custom">
+                                <label class="form-check-label" for="sync-custom">
+                                    <strong>Personalizzato</strong>
+                                </label>
+                            </div>
+                            <div class="mt-2" id="custom-schedule" style="display:none;">
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="custom-hours" 
+                                           min="1" max="168" value="24" placeholder="Ore">
+                                    <span class="input-group-text">ore</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary w-100 mt-3" onclick="saveSchedule()">
+                            <i class="fas fa-save"></i> Salva Schedulazione
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Console -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-terminal me-2"></i>Log Sincronizzazione</h5>
+                        <div>
+                            <button class="btn btn-sm btn-secondary" onclick="clearLogs()">
+                                <i class="fas fa-trash"></i> Pulisci Log
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="refreshLogs()">
+                                <i class="fas fa-sync"></i> Aggiorna
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="sync-logs" class="log-console">
+                            <div>Waiting for sync logs...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let logRefreshInterval = null;
+
+        // Load configuration on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadServerConfig();
+            loadSyncStatus();
+            startLogRefresh();
+        });
+
+        // Load server configuration
+        function loadServerConfig() {
+            fetch('/sync/config')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.config) {
+                        document.getElementById('server-url').value = data.config.url || '';
+                        document.getElementById('server-database').value = data.config.database || '';
+                        document.getElementById('server-username').value = data.config.username || '';
+                        document.getElementById('server-password').value = data.config.password || '';
+                        document.getElementById('server-comune').value = data.config.comune || 'Rende';
+                        
+                        // Load schedule
+                        if (data.config.sync_enabled) {
+                            document.getElementById('sync-enabled').checked = true;
+                        }
+                        
+                        // Set schedule radio
+                        const interval = data.config.sync_interval_hours || 12;
+                        if (interval === 1) {
+                            document.getElementById('sync-hourly').checked = true;
+                        } else if (interval === 6) {
+                            document.getElementById('sync-6hours').checked = true;
+                        } else if (interval === 12) {
+                            document.getElementById('sync-12hours').checked = true;
+                        } else if (interval === 24) {
+                            document.getElementById('sync-daily').checked = true;
+                        } else {
+                            document.getElementById('sync-custom').checked = true;
+                            document.getElementById('custom-hours').value = interval;
+                            document.getElementById('custom-schedule').style.display = 'block';
+                        }
+                    }
+                });
+        }
+
+        // Load sync status
+        function loadSyncStatus() {
+            fetch('/sync/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const statusDiv = document.getElementById('sync-status');
+                        const connStatus = document.getElementById('connection-status');
+                        const lastSync = document.getElementById('last-sync');
+                        
+                        if (data.status.connected) {
+                            statusDiv.className = 'sync-status connected';
+                            connStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i> Connesso';
+                        } else {
+                            statusDiv.className = 'sync-status disconnected';
+                            connStatus.innerHTML = '<i class="fas fa-times-circle text-danger"></i> Non connesso';
+                        }
+                        
+                        lastSync.textContent = data.status.last_sync || 'Mai';
+                    }
+                });
+        }
+
+        // Test connection
+        function testConnection() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+            
+            const config = {
+                url: document.getElementById('server-url').value,
+                database: document.getElementById('server-database').value,
+                username: document.getElementById('server-username').value,
+                password: document.getElementById('server-password').value,
+                comune: document.getElementById('server-comune').value
+            };
+            
+            fetch('/sync/test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plug"></i> Test Connessione';
+                
+                if (data.success) {
+                    alert('Connessione riuscita! ' + data.message);
+                    loadSyncStatus();
+                } else {
+                    alert('Errore connessione: ' + data.error);
+                }
+            });
+        }
+
+        // Manual sync
+        function manualSync() {
+            if (!confirm('Avviare la sincronizzazione manuale?')) return;
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sincronizzazione...';
+            
+            fetch('/sync/manual', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync"></i> Sincronizza Ora';
+                
+                if (data.success) {
+                    alert('Sincronizzazione completata! ' + data.message);
+                    loadSyncStatus();
+                    refreshLogs();
+                } else {
+                    alert('Errore sincronizzazione: ' + data.error);
+                }
+            });
+        }
+
+        // Save server configuration
+        const form = document.getElementById('server-config-form');
+        if (form) {
+            console.log('Form trovato, aggiunto event listener');
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('Submit form triggered');
+                
+                const config = {
+                    url: document.getElementById('server-url').value,
+                    database: document.getElementById('server-database').value,
+                    username: document.getElementById('server-username').value,
+                    password: document.getElementById('server-password').value,
+                    comune: document.getElementById('server-comune').value
+                };
+                
+                console.log('Configurazione da salvare:', config);
+                
+                fetch('/sync/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response data:', data);
+                    if (data.success) {
+                        alert('Configurazione salvata con successo nel database!');
+                        loadSyncStatus();
+                    } else {
+                        alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore fetch:', error);
+                    alert('Errore di rete: ' + error.message);
+                });
+            });
+        } else {
+            console.error('Form server-config-form non trovato!');
+        }
+
+        // Save schedule
+        function saveSchedule() {
+            const enabled = document.getElementById('sync-enabled').checked;
+            let interval = 12;
+            
+            if (document.getElementById('sync-hourly').checked) interval = 1;
+            else if (document.getElementById('sync-6hours').checked) interval = 6;
+            else if (document.getElementById('sync-12hours').checked) interval = 12;
+            else if (document.getElementById('sync-daily').checked) interval = 24;
+            else if (document.getElementById('sync-custom').checked) {
+                interval = parseInt(document.getElementById('custom-hours').value) || 24;
+            }
+            
+            const config = {
+                sync_enabled: enabled,
+                sync_interval_hours: interval
+            };
+            
+            fetch('/sync/schedule', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Schedulazione salvata!');
+                } else {
+                    alert('Errore: ' + data.error);
+                }
+            });
+        }
+
+        // Toggle password visibility
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            field.type = field.type === 'password' ? 'text' : 'password';
+        }
+
+        // Show/hide custom schedule
+        document.querySelectorAll('input[name="sync-schedule"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const customDiv = document.getElementById('custom-schedule');
+                customDiv.style.display = this.value === 'custom' ? 'block' : 'none';
+            });
+        });
+
+        // Log management
+        function refreshLogs() {
+            fetch('/sync/logs')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.logs) {
+                        const logDiv = document.getElementById('sync-logs');
+                        logDiv.innerHTML = data.logs.map(log => 
+                            `<div>[${log.timestamp}] ${log.level}: ${log.message}</div>`
+                        ).join('');
+                        logDiv.scrollTop = logDiv.scrollHeight;
+                    }
+                });
+        }
+
+        function clearLogs() {
+            document.getElementById('sync-logs').innerHTML = '<div>Logs cleared...</div>';
+        }
+
+        function startLogRefresh() {
+            refreshLogs();
+            logRefreshInterval = setInterval(refreshLogs, 5000);
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (logRefreshInterval) {
+                clearInterval(logRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>
+"""
