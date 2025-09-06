@@ -58,6 +58,9 @@ system_settings         -- Configurazioni sistema
 relay_config           -- Configurazione 8 relè
 fascie_orarie          -- Orari accesso consentiti
 limiti_accesso_mensili -- Limiti mensili per utente
+utenti_sistema         -- Utenti sistema con profili estesi (v2.7.0+)
+password_reset_tokens  -- Token reset password (v2.7.0+)
+password_history      -- Storico password (v2.7.0+)
 ```
 
 ### 3. Variabili Ambiente
@@ -520,6 +523,88 @@ date.toLocaleString('it-IT', {
     hour12: false
 });
 ```
+
+---
+
+## 👤 Sistema Profili Utente (v2.7.0)
+
+### Campi Profilo Estesi
+La tabella `utenti_sistema` è stata estesa con nuovi campi profilo:
+
+```sql
+-- Nuovi campi profilo
+nome            TEXT    -- Nome utente
+cognome         TEXT    -- Cognome utente  
+avatar_path     TEXT    -- Path immagine profilo
+telefono        TEXT    -- Numero telefono
+bio             TEXT    -- Biografia/descrizione
+data_nascita    DATE    -- Data di nascita
+indirizzo       TEXT    -- Indirizzo
+```
+
+### Upload Avatar
+Il sistema supporta l'upload di immagini profilo:
+- **Formati supportati**: jpg, jpeg, png, gif, webp
+- **Directory storage**: `/opt/access_control/src/api/static/avatars/`
+- **Avatar default**: `/api/static/img/default-avatar.png`
+- **Naming convention**: `{username}_{uuid}_{ext}`
+
+### Endpoint API Profili
+
+```javascript
+// Aggiornamento profilo con FormData (supporta upload file)
+POST /api/users/update-profile
+Content-Type: multipart/form-data
+{
+    username: string,
+    nome: string,
+    cognome: string,
+    email: string,
+    telefono: string,
+    bio: string,
+    avatar: File (optional)
+}
+```
+
+### Password Management
+Sistema completo di gestione password con:
+- **Validazione rigorosa**: min 8 caratteri, maiuscole, minuscole, numeri, caratteri speciali
+- **Reset via email**: Token sicuri con scadenza 24h
+- **Password history**: Previene riutilizzo password recenti
+- **Cambio obbligatorio**: Flag per forzare cambio al prossimo login
+- **Account lockout**: Blocco dopo tentativi falliti
+
+#### Endpoint Password Management
+```javascript
+// Admin imposta password diretta
+POST /api/users/admin-set-password
+{
+    username: string,
+    password: string,
+    must_change_password: boolean
+}
+
+// Invia link reset password
+POST /api/users/send-reset-link
+{
+    username: string,
+    custom_message: string (optional)
+}
+```
+
+### Frontend Components
+
+#### Modal Modifica Profilo
+- Layout a due colonne con preview avatar
+- Upload immagine con anteprima real-time
+- Campi: nome, cognome, email, telefono, bio
+- Rimosso campo password (gestito separatamente)
+
+#### Form Creazione Utente
+- Aggiunti campi nome e cognome
+- Validazione password real-time
+- Indicatore forza password
+- Requisiti password visualizzati dinamicamente
 
 ---
 

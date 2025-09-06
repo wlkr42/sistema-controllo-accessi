@@ -587,6 +587,152 @@ Tutti gli endpoint possono ritornare i seguenti errori:
 
 ---
 
+## 👤 System Users Management (v2.7.0)
+
+### GET `/api/users/list`
+Lista utenti di sistema con informazioni complete.
+
+**Response:**
+```json
+{
+  "success": true,
+  "users": [
+    {
+      "username": "admin",
+      "role": "admin",
+      "role_name": "Amministratore",
+      "attivo": true,
+      "email": "admin@example.com",
+      "nome": "Mario",
+      "cognome": "Rossi",
+      "avatar_path": "/api/static/avatars/admin_abc123.jpg",
+      "telefono": "+39 333 1234567",
+      "bio": "Amministratore del sistema",
+      "last_login": "2025-09-06 16:00:00",
+      "must_change_password": false,
+      "failed_attempts": 0
+    }
+  ]
+}
+```
+
+### POST `/api/users/create`
+Crea nuovo utente di sistema con profilo esteso.
+
+**Request Body:**
+```json
+{
+  "username": "mario_rossi",
+  "password": "SecurePass123!",
+  "email": "mario.rossi@example.com",
+  "nome": "Mario",
+  "cognome": "Rossi",
+  "role": "viewer"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Utente mario_rossi creato con ruolo Visualizzatore",
+  "username": "mario_rossi"
+}
+```
+
+### POST `/api/users/update-profile`
+Aggiorna profilo utente con supporto upload avatar.
+
+**Request:** `multipart/form-data`
+- `username` (string): Username utente
+- `nome` (string): Nome
+- `cognome` (string): Cognome  
+- `email` (string): Email
+- `telefono` (string): Telefono
+- `bio` (string): Biografia
+- `role` (string): Ruolo (solo admin)
+- `avatar` (file): Immagine profilo (jpg, png, gif, webp)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Profilo aggiornato con successo",
+  "user": {
+    "username": "mario_rossi",
+    "nome": "Mario",
+    "cognome": "Rossi",
+    "email": "mario.rossi@example.com",
+    "telefono": "+39 333 1234567",
+    "bio": "Descrizione utente",
+    "avatar_path": "/api/static/avatars/mario_rossi_uuid.jpg",
+    "role": "viewer"
+  }
+}
+```
+
+### POST `/api/users/admin-set-password`
+Admin imposta direttamente una nuova password per un utente.
+
+**Request Body:**
+```json
+{
+  "username": "mario_rossi",
+  "password": "NewSecurePass123!",
+  "must_change_password": true
+}
+```
+
+**Password Requirements:**
+- Minimo 8 caratteri
+- Almeno una lettera maiuscola
+- Almeno una lettera minuscola
+- Almeno un numero
+- Almeno un carattere speciale (!@#$%^&*(),.?":{}|<>)
+- Non deve contenere spazi
+- Non deve essere una password comune
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Password aggiornata con successo",
+  "must_change": true
+}
+```
+
+### POST `/api/users/send-reset-link`
+Invia link di reset password via email.
+
+**Request Body:**
+```json
+{
+  "username": "mario_rossi",
+  "custom_message": "Messaggio personalizzato opzionale"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Link di reset inviato a mario.rossi@example.com",
+  "reset_url": "http://sistema.local/reset-password?token=abc123..."
+}
+```
+
+### DELETE `/api/users/delete`
+Elimina utente di sistema.
+
+**Request Body:**
+```json
+{
+  "username": "mario_rossi"
+}
+```
+
+---
+
 ## 📝 Notes
 
 ### Rate Limiting
@@ -603,5 +749,5 @@ Tutti gli endpoint possono ritornare i seguenti errori:
 
 ---
 
-**API Version**: 2.1.0  
-**Last Updated**: 2025-09-05
+**API Version**: 2.7.0  
+**Last Updated**: 2025-09-06

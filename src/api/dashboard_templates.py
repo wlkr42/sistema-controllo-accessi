@@ -61,6 +61,12 @@ LOGIN_TEMPLATE = """
                     </button>
                 </form>
                 
+                <div class="text-center mt-3">
+                    <a href="/reset-password" class="text-decoration-none">
+                        <i class="fas fa-key me-1"></i>Password dimenticata?
+                    </a>
+                </div>
+                
                 <div class="role-info">
                     <h6 class="text-center mb-3">Livelli di Accesso</h6>
                     <div class="mb-2">

@@ -1,8 +1,16 @@
-# Sistema Controllo Accessi - v2.6.0
+# Sistema Controllo Accessi - v2.7.0
 
 Sistema completo per il controllo degli accessi tramite tessera sanitaria con gestione hardware, interfaccia web e funzionalità avanzate.
 
-## ✨ Ultime Novità (v2.6.0)
+## ✨ Ultime Novità (v2.7.0)
+
+- 👤 **Profili Utente Estesi**: Sistema completo gestione profili con avatar
+- 🔐 **Password Management Avanzato**: Validazione rigorosa, reset via email, storico password
+- 📸 **Upload Avatar**: Supporto immagini profilo con anteprima real-time
+- 📝 **Campi Profilo**: Nome, cognome, telefono, bio per ogni utente sistema
+- 🎨 **UI Migliorata**: Modal profilo ridisegnato, form creazione utente ottimizzato
+
+## ✨ Novità v2.6.0
 
 - 🗄️ **Database Migrato**: Database spostato da `/src` a `/data` per struttura corretta
 - 🔧 **Configurazione Centralizzata**: Nuovo sistema gestione path database unificato

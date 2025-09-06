@@ -56,6 +56,7 @@ from api.modules.activities import activities_bp
 from api.modules.configurazione_accessi import configurazione_accessi_bp, verifica_orario, verifica_limite_mensile
 from api.backup_module import backup_bp
 from api.modules.sync_module import sync_bp
+from api.modules.password_management import password_management_bp
 
 # Definizione dei tipi personalizzati
 FlaskResponse = Union[Response, str, Tuple[Union[Dict[str, Any], str], int]]
@@ -154,6 +155,7 @@ app.register_blueprint(activities_bp)
 app.register_blueprint(configurazione_accessi_bp)
 app.register_blueprint(backup_bp)
 app.register_blueprint(sync_bp, url_prefix='/sync')
+app.register_blueprint(password_management_bp)
 
 # ===============================
 # ROUTES PRINCIPALI
@@ -203,6 +205,14 @@ def utenti_autorizzati_page() -> FlaskResponse:
     with open(os.path.join(os.path.dirname(__file__), 'templates', 'utenti_autorizzati.html'), 'r') as f:
         template = f.read()
     return render_template_string(template, session=session)
+
+@app.route('/reset-password')
+def reset_password_page():
+    """Pagina per il reset della password"""
+    template_path = os.path.join(os.path.dirname(__file__), 'templates', 'reset_password.html')
+    with open(template_path, 'r') as f:
+        template = f.read()
+    return render_template_string(template)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

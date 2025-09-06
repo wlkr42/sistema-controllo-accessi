@@ -18,17 +18,38 @@
             padding: 0.3rem 0.6rem;
             border-radius: 4px;
         }
-        .role-admin { 
-            background: #4a5568; 
-            color: white; 
+        .password-strength {
+            height: 5px;
+            border-radius: 3px;
+            transition: width 0.3s ease;
         }
-        .role-manager { 
-            background: #4c51bf; 
-            color: white; 
+        .avatar-sm {
+            width: 40px;
+            height: 40px;
+            display: inline-block;
         }
-        .role-viewer { 
-            background: #2b6cb0; 
-            color: white; 
+        .avatar-title {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .requirement-item {
+            padding: 2px 0;
+            transition: all 0.3s;
+        }
+        .requirement-item.text-success {
+            font-weight: 500;
+        }
+        .requirement-item i {
+            width: 20px;
+            text-align: center;
+        }
+        .btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .table th { 
             background: #f8f9fa; 
@@ -203,11 +224,31 @@
                                        placeholder="es. mario_rossi">
                                 <div class="form-text">Solo lettere, numeri e underscore</div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Nome</label>
+                                    <input type="text" class="form-control" id="new-nome" 
+                                           placeholder="Mario">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Cognome</label>
+                                    <input type="text" class="form-control" id="new-cognome" 
+                                           placeholder="Rossi">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="new-email" 
+                                       placeholder="email@esempio.it">
+                                <div class="form-text">Utilizzata per il recupero password</div>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label">Password</label>
                                 <input type="password" class="form-control" id="new-password" 
                                        required minlength="8"
                                        placeholder="Password sicura">
+                                <div class="password-strength mt-2" id="strength-bar" style="height: 5px; border-radius: 3px;"></div>
+                                <div id="password-requirements" class="mt-2"></div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Ruolo</label>
@@ -276,7 +317,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/user-menu.js"></script>
     <script src="/static/js/clock.js"></script>
-    <script src="/static/js/users.js"></script>
+    <script src="/static/js/user-management-enhanced.js"></script>
     <script src="/static/js/recent-activities.js"></script>
     <script>
         // Carica menu utente
