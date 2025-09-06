@@ -117,7 +117,7 @@ def test_relay():
         return jsonify({'success': False, 'error': str(e)})
 
 def test_integrated(get_db_connection):
-    """Test integrato REALE: lettura tessera fisica e azioni conseguenti"""
+    """Test integrato: simulazione completa accesso con hardware configurato"""
     try:
         # Reset stato test globale
         global integrated_test_state
@@ -134,57 +134,144 @@ def test_integrated(get_db_connection):
         def run_integrated_test():
             global integrated_test_state
             controller = None
-            reader = None
             
             try:
-                # FASE 1: Inizializzazione hardware
+                # FASE 1: Leggi configurazione hardware
                 integrated_test_state['phase'] = 'connecting'
                 integrated_test_state['log'].append("🔄 AVVIO TEST INTEGRATO ACCESSO REALE")
                 integrated_test_state['log'].append("━" * 50)
-                integrated_test_state['log'].append("📡 Connessione hardware...")
+                integrated_test_state['log'].append("📡 Lettura configurazione hardware...")
                 
-                # Connetti USB-RLY08
+                # Ottieni configurazione dal sistema
+                from core.config import get_config_manager
+                config_manager = get_config_manager()
+                
+                # Info lettore configurato
+                card_cfg = config_manager.get_hardware_assignment("card_reader")
+                device_key = card_cfg.get("device_key", "Non configurato")
+                device_path = card_cfg.get("device_path", "Non configurato")
+                integrated_test_state['log'].append(f"📟 Lettore configurato: {device_key}")
+                integrated_test_state['log'].append(f"📂 Path dispositivo: {device_path}")
+                
+                # Info relay configurato
+                relay_cfg = config_manager.get_hardware_assignment("relay_controller")
+                relay_port = relay_cfg.get("device_key", "Non configurato")
+                integrated_test_state['log'].append(f"🔌 Controller relè: {relay_port}")
+                
+                # Connetti USB-RLY08 per simulazione
                 controller = USBRLY08Controller()
-                if not controller.connect():
-                    integrated_test_state['log'].append("❌ Errore connessione USB-RLY08")
-                    integrated_test_state['status'] = 'error'
-                    return
+                if controller.connect():
+                    integrated_test_state['log'].append("✅ USB-RLY08 connesso per simulazione")
+                else:
+                    integrated_test_state['log'].append("⚠️ USB-RLY08 non disponibile - simulazione senza hardware")
+                    controller = None
                 
-                integrated_test_state['log'].append("✅ USB-RLY08 connesso")
+                # Carica configurazione relè dal database
+                relay_config = {}
+                try:
+                    conn = get_db_connection()
+                    if conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            SELECT relay_number, description, valid_action, valid_duration, 
+                                   invalid_action, invalid_duration 
+                            FROM relay_config
+                            ORDER BY relay_number
+                        """)
+                        for row in cursor.fetchall():
+                            relay_num = row[0]
+                            relay_config[relay_num] = {
+                                'description': row[1],
+                                'valid_action': row[2],
+                                'valid_duration': row[3],
+                                'invalid_action': row[4],
+                                'invalid_duration': row[5]
+                            }
+                        conn.close()
+                        integrated_test_state['log'].append(f"⚙️ Configurazione relè caricata: {len(relay_config)} relè configurati")
+                except Exception as e:
+                    integrated_test_state['log'].append(f"⚠️ Impossibile caricare config relè: {str(e)}")
+                    # Configurazione di default
+                    relay_config = {
+                        1: {'description': 'Cancello', 'valid_action': 'PULSE', 'valid_duration': 3},
+                        2: {'description': 'LED Rosso', 'valid_action': 'OFF', 'invalid_action': 'ON', 'invalid_duration': 2},
+                        3: {'description': 'LED Verde', 'valid_action': 'ON', 'valid_duration': 2},
+                        4: {'description': 'LED Giallo', 'valid_action': 'OFF', 'invalid_action': 'OFF'},
+                        5: {'description': 'Buzzer', 'valid_action': 'PULSE', 'valid_duration': 0.2}
+                    }
                 
-                # Inizializza lettore tessere
-                reader = CardReader()
-                if not reader.test_connection():
-                    integrated_test_state['log'].append("❌ Errore connessione lettore OMNIKEY")
-                    integrated_test_state['status'] = 'error'
-                    return
-                
-                integrated_test_state['log'].append("✅ Lettore OMNIKEY connesso")
+                integrated_test_state['log'].append("✅ Sistema principale resta operativo")
+                integrated_test_state['log'].append("📊 Monitoraggio database attivo")
                 time.sleep(0.5)
                 
-                # FASE 2: Attesa tessera REALE
+                # FASE 2: Attesa tessera tramite monitoraggio database
                 integrated_test_state['phase'] = 'waiting_card'
                 integrated_test_state['log'].append("\n💳 INSERIRE TESSERA SANITARIA NEL LETTORE...")
                 integrated_test_state['log'].append("⏱️ Timeout: 60 secondi")
+                integrated_test_state['log'].append("📊 Monitoraggio database per nuove letture...")
                 
-                # LED giallo lampeggiante (attesa)
+                # Ottieni ultimo ID dal database
+                import sqlite3
+                db_path = '/opt/access_control/src/access.db'
+                last_access_id = 0
+                try:
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT MAX(id) FROM log_accessi")
+                    result = cursor.fetchone()
+                    last_access_id = result[0] if result and result[0] else 0
+                    conn.close()
+                except:
+                    pass
+                
+                # LED giallo lampeggiante (attesa) e monitoraggio database
                 start_time = time.time()
                 cf = None
+                motivo_rifiuto = None
+                nome_utente = None
+                autorizzato = False
                 
                 while (time.time() - start_time) < integrated_test_state['timeout']:
-                    # Lampeggio LED giallo
-                    controller._send_command(104)  # Relay 4 ON (LED Giallo)
-                    time.sleep(0.3)
-                    controller._send_command(114)  # Relay 4 OFF
-                    time.sleep(0.3)
+                    # Lampeggio LED giallo se configurato e controller disponibile
+                    if controller and 4 in relay_config:
+                        # Trova relè configurato come LED Giallo (di solito relè 4)
+                        for relay_num, config in relay_config.items():
+                            if 'giallo' in config.get('description', '').lower():
+                                try:
+                                    controller._send_command(100 + relay_num)  # ON
+                                    time.sleep(0.3)
+                                    controller._send_command(110 + relay_num)  # OFF
+                                    time.sleep(0.3)
+                                except:
+                                    pass
+                                break
+                    else:
+                        time.sleep(0.6)  # Simulazione senza hardware
                     
-                    # Prova a leggere tessera
+                    # Monitora database per nuovi accessi
                     try:
-                        cf = reader._read_card_robust(timeout=0.5)
-                        if cf and len(cf) == 16:
+                        conn = sqlite3.connect(db_path)
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            SELECT id, codice_fiscale, autorizzato, motivo_rifiuto, nome_utente 
+                            FROM log_accessi 
+                            WHERE id > ? 
+                            ORDER BY id DESC
+                            LIMIT 1
+                        """, (last_access_id,))
+                        new_access = cursor.fetchone()
+                        conn.close()
+                        
+                        if new_access:
+                            cf = new_access[1]
+                            autorizzato = bool(new_access[2])
+                            motivo_rifiuto = new_access[3]
+                            nome_utente = new_access[4]
                             break
                     except:
                         pass
+                    
+                    time.sleep(0.5)
                 
                 if not cf:
                     integrated_test_state['phase'] = 'timeout'
@@ -198,104 +285,139 @@ def test_integrated(get_db_connection):
                 integrated_test_state['log'].append(f"📄 Codice Fiscale: {cf}")
                 integrated_test_state['cf'] = cf
                 
-                # Spegni LED giallo
-                controller._send_command(114)
+                # Mostra nome utente se disponibile
+                if nome_utente:
+                    integrated_test_state['log'].append(f"👤 Utente: {nome_utente}")
+                    integrated_test_state['user_name'] = nome_utente
+                else:
+                    integrated_test_state['user_name'] = "Sconosciuto"
                 
-                # FASE 4: Verifica autorizzazione nel database
-                integrated_test_state['log'].append("🔍 Verifica autorizzazione nel database...")
+                # Spegni LED giallo se controller disponibile
+                if controller:
+                    try:
+                        # Spegni tutti i LED che potrebbero essere accesi
+                        for relay_num in relay_config.keys():
+                            controller._send_command(110 + relay_num)  # OFF
+                    except:
+                        pass
+                
+                # FASE 4: Mostra risultato autorizzazione (già letto dal database)
+                integrated_test_state['log'].append("🔍 Risultato verifica autorizzazione:")
                 time.sleep(0.5)
                 
-                conn = get_db_connection()
-                authorized = False
-                user_name = "Sconosciuto"
-                
-                if conn:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT nome, attivo 
-                        FROM utenti_autorizzati 
-                        WHERE codice_fiscale = ?
-                    """, (cf,))
-                    user = cursor.fetchone()
-                    
-                    if user:
-                        nome = user[0] or "Utente"
-                        attivo = user[1]
-                        user_name = nome
-                        authorized = bool(attivo)
-                        
-                        if not authorized:
-                            integrated_test_state['log'].append(f"⚠️ Utente disattivato: {user_name}")
-                    else:
-                        integrated_test_state['log'].append("❓ Codice fiscale non trovato nel database")
-                    
-                    conn.close()
-                
-                integrated_test_state['authorized'] = authorized
-                integrated_test_state['user_name'] = user_name
+                integrated_test_state['authorized'] = autorizzato
                 
                 # FASE 5: Esegui azioni in base all'autorizzazione
-                if authorized:
+                if autorizzato:
                     integrated_test_state['phase'] = 'access_granted'
                     integrated_test_state['log'].append(f"\n✅ ACCESSO AUTORIZZATO")
-                    integrated_test_state['log'].append(f"👤 Utente: {user_name}")
+                    integrated_test_state['log'].append(f"👤 Utente: {integrated_test_state['user_name']}")
                     integrated_test_state['log'].append("🚪 Apertura cancello...")
                     
-                    # Sequenza accesso autorizzato
-                    controller._send_command(103)  # LED Verde ON
-                    controller._send_command(105)  # Buzzer ON
-                    time.sleep(0.2)
-                    controller._send_command(115)  # Buzzer OFF
-                    time.sleep(0.3)
-                    
-                    # Apri cancello
-                    controller._send_command(101)  # Cancello ON
-                    integrated_test_state['log'].append("✅ Cancello APERTO (8 secondi)")
-                    
-                    # Attendi 8 secondi (tempo reale apertura)
-                    time.sleep(8)
-                    
-                    # Chiudi cancello
-                    controller._send_command(111)  # Cancello OFF
-                    integrated_test_state['log'].append("🔒 Cancello CHIUSO")
-                    
-                    time.sleep(1)
-                    controller._send_command(113)  # LED Verde OFF
+                    # Sequenza accesso autorizzato usando configurazione dinamica
+                    if controller:
+                        try:
+                            # Applica configurazione per accesso VALIDO
+                            for relay_num, config in relay_config.items():
+                                action = config.get('valid_action', 'OFF')
+                                duration = config.get('valid_duration', 0)
+                                description = config.get('description', f'Relè {relay_num}')
+                                
+                                if action == 'ON':
+                                    controller._send_command(100 + relay_num)  # ON
+                                    integrated_test_state['log'].append(f"🟢 {description}: ON per {duration}s")
+                                    if duration > 0:
+                                        # Programma spegnimento dopo durata
+                                        threading.Timer(duration, lambda r=relay_num: controller._send_command(110 + r)).start()
+                                elif action == 'PULSE':
+                                    controller._send_command(100 + relay_num)  # ON
+                                    integrated_test_state['log'].append(f"⚡ {description}: PULSE {duration}s")
+                                    time.sleep(duration)
+                                    controller._send_command(110 + relay_num)  # OFF
+                                elif action == 'OFF':
+                                    controller._send_command(110 + relay_num)  # OFF
+                            
+                            # Attendi per simulazione completa
+                            max_duration = max([cfg.get('valid_duration', 0) for cfg in relay_config.values()])
+                            if max_duration > 0:
+                                integrated_test_state['log'].append(f"⏱️ Attesa {max_duration} secondi...")
+                                time.sleep(max_duration)
+                            
+                            # Spegni tutti i relè alla fine
+                            for relay_num in relay_config.keys():
+                                controller._send_command(110 + relay_num)  # OFF
+                            
+                        except Exception as e:
+                            integrated_test_state['log'].append(f"⚠️ Errore simulazione: {str(e)}")
+                    else:
+                        integrated_test_state['log'].append("✅ Simulazione apertura cancello (8 secondi)")
+                        time.sleep(3)  # Simulazione ridotta
+                        integrated_test_state['log'].append("🔒 Simulazione chiusura cancello")
                     
                 else:
                     integrated_test_state['phase'] = 'access_denied'
                     integrated_test_state['log'].append(f"\n❌ ACCESSO NEGATO")
-                    integrated_test_state['log'].append(f"👤 Utente: {user_name}")
-                    if user_name == "Sconosciuto":
-                        integrated_test_state['log'].append("�� Tessera non registrata nel sistema")
+                    integrated_test_state['log'].append(f"👤 Utente: {integrated_test_state['user_name']}")
+                    
+                    # Mostra motivazione del rifiuto
+                    if motivo_rifiuto:
+                        integrated_test_state['log'].append(f"📝 Motivo: {motivo_rifiuto}")
+                    elif integrated_test_state['user_name'] == "Sconosciuto":
+                        integrated_test_state['log'].append("🚫 Tessera non registrata nel sistema")
                     else:
                         integrated_test_state['log'].append("🚫 Utente non autorizzato")
                     
-                    # Sequenza accesso negato
-                    controller._send_command(102)  # LED Rosso ON
-                    
-                    # Pattern buzzer negato (3 beep)
-                    for i in range(3):
-                        controller._send_command(105)  # Buzzer ON
-                        time.sleep(0.1)
-                        controller._send_command(115)  # Buzzer OFF
-                        time.sleep(0.2)
-                    
-                    time.sleep(2)
-                    controller._send_command(112)  # LED Rosso OFF
+                    # Sequenza accesso negato usando configurazione dinamica
+                    if controller:
+                        try:
+                            # Applica configurazione per accesso NEGATO/INVALIDO
+                            for relay_num, config in relay_config.items():
+                                action = config.get('invalid_action', 'OFF')
+                                duration = config.get('invalid_duration', 0)
+                                description = config.get('description', f'Relè {relay_num}')
+                                
+                                if action == 'ON':
+                                    controller._send_command(100 + relay_num)  # ON
+                                    integrated_test_state['log'].append(f"🔴 {description}: ON per {duration}s")
+                                    if duration > 0:
+                                        # Programma spegnimento dopo durata
+                                        threading.Timer(duration, lambda r=relay_num: controller._send_command(110 + r)).start()
+                                elif action == 'PULSE':
+                                    # Per buzzer, fai 3 beep
+                                    if 'buzzer' in description.lower():
+                                        integrated_test_state['log'].append(f"🔊 {description}: 3 beep")
+                                        for i in range(3):
+                                            controller._send_command(100 + relay_num)  # ON
+                                            time.sleep(0.1)
+                                            controller._send_command(110 + relay_num)  # OFF
+                                            time.sleep(0.2)
+                                    else:
+                                        controller._send_command(100 + relay_num)  # ON
+                                        integrated_test_state['log'].append(f"⚡ {description}: PULSE {duration}s")
+                                        time.sleep(duration)
+                                        controller._send_command(110 + relay_num)  # OFF
+                                elif action == 'OFF':
+                                    controller._send_command(110 + relay_num)  # OFF
+                            
+                            # Attendi per simulazione completa
+                            max_duration = max([cfg.get('invalid_duration', 0) for cfg in relay_config.values()])
+                            if max_duration > 0:
+                                integrated_test_state['log'].append(f"⏱️ Attesa {max_duration} secondi...")
+                                time.sleep(max_duration)
+                            
+                            # Spegni tutti i relè alla fine
+                            for relay_num in relay_config.keys():
+                                controller._send_command(110 + relay_num)  # OFF
+                                
+                        except Exception as e:
+                            integrated_test_state['log'].append(f"⚠️ Errore simulazione: {str(e)}")
+                    else:
+                        integrated_test_state['log'].append("🔴 Simulazione LED rosso e buzzer negato")
+                        time.sleep(2)
                 
-                # FASE 6: Log nel database
+                # FASE 6: Log risultato test
                 integrated_test_state['phase'] = 'logging'
-                conn = get_db_connection()
-                if conn:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        INSERT INTO log_accessi (codice_fiscale, timestamp, autorizzato) 
-                        VALUES (?, ?, ?)
-                    """, (cf, datetime.now(), 1 if authorized else 0))
-                    conn.commit()
-                    conn.close()
-                    integrated_test_state['log'].append("\n📝 Accesso registrato nel database")
+                integrated_test_state['log'].append("\n📝 Test completato - accesso già registrato dal sistema principale")
                 
                 # FASE 7: Completamento
                 integrated_test_state['phase'] = 'completed'
@@ -310,9 +432,12 @@ def test_integrated(get_db_connection):
             finally:
                 # Cleanup
                 if controller:
-                    # Spegni tutti i LED
-                    controller._send_command(110)  # All OFF
-                    controller.disconnect()
+                    try:
+                        # Spegni tutti i LED
+                        controller._send_command(110)  # All OFF
+                        controller.disconnect()
+                    except:
+                        pass
                 integrated_test_state['status'] = 'completed'
         
         # Avvia test in thread separato

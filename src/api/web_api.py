@@ -701,13 +701,35 @@ def api_recent_accesses():
         return jsonify({'error': 'Database non disponibile'}), 500
     
     try:
+        # Ottieni configurazione orologio per formattazione corretta
         cursor = conn.cursor()
+        
+        # Recupera timezone dal database
+        cursor.execute("SELECT value FROM system_settings WHERE key = 'sistema.timezone'")
+        result = cursor.fetchone()
+        timezone_str = result[0] if result else 'Europe/Rome'
+        
+        # Recupera formato data
+        cursor.execute("SELECT value FROM system_settings WHERE key = 'sistema.formato_data'")
+        result = cursor.fetchone()
+        date_format = result[0] if result else 'DD/MM/YYYY'
+        
+        # Recupera formato ora
+        cursor.execute("SELECT value FROM system_settings WHERE key = 'sistema.formato_ora'")
+        result = cursor.fetchone()
+        time_format = result[0] if result else '24'
+        
+        # Configura timezone
+        from datetime import datetime
+        import pytz
+        tz = pytz.timezone(timezone_str)
         cursor.execute("""
             SELECT 
                 la.timestamp, 
                 la.codice_fiscale, 
                 la.autorizzato,
-                COALESCE(ua.nome, 'Utente sconosciuto') as nome_completo
+                COALESCE(ua.nome, 'Utente sconosciuto') as nome_completo,
+                la.motivo_rifiuto
             FROM log_accessi la
             LEFT JOIN utenti_autorizzati ua ON la.codice_fiscale = ua.codice_fiscale
             ORDER BY la.timestamp DESC
@@ -718,11 +740,39 @@ def api_recent_accesses():
         accesses = []
         
         for row in results:
+            # Converti timestamp a datetime
+            if isinstance(row[0], str):
+                dt = datetime.fromisoformat(row[0].replace('Z', '+00:00'))
+            else:
+                dt = row[0]
+            
+            # Applica timezone configurato
+            if dt.tzinfo is None:
+                dt = pytz.utc.localize(dt)
+            dt_local = dt.astimezone(tz)
+            
+            # Formatta data e ora secondo configurazione
+            if time_format == '12h':
+                time_str = dt_local.strftime('%I:%M:%S %p')
+            else:
+                time_str = dt_local.strftime('%H:%M:%S')
+            
+            if date_format == 'MM/DD/YYYY':
+                date_str = dt_local.strftime('%m/%d/%Y')
+            elif date_format == 'YYYY-MM-DD':
+                date_str = dt_local.strftime('%Y-%m-%d')
+            else:  # DD/MM/YYYY
+                date_str = dt_local.strftime('%d/%m/%Y')
+            
             accesses.append({
-                'timestamp': row[0],
+                'timestamp': row[0],  # Raw per compatibilità
+                'timestamp_formatted': f"{date_str} {time_str}",
+                'time_formatted': time_str,
+                'date_formatted': date_str,
                 'codice_fiscale': row[1],
                 'autorizzato': bool(row[2]),
-                'nome': row[3]
+                'nome': row[3],
+                'motivo_rifiuto': row[4]
             })
         
         return jsonify({'accesses': accesses})

@@ -1,5 +1,29 @@
 # Changelog - Sistema Controllo Accessi
 
+## [2.3.0] - 2025-09-06
+
+### 🎉 Nuove Funzionalità
+
+#### 🕐 Allineamento Timezone Ultimi Accessi
+- **Dashboard Ultimi Accessi** ora usa il timezone configurato nel sistema
+- Gli orari visualizzati rispettano la configurazione "Orologio" nelle impostazioni admin
+- Rimossa conversione timezone lato client che causava discrepanze
+
+#### 🔧 Test Completo Sistema Migliorato
+- **Configurazione dinamica relay** letta dal database
+- Il test ora usa la mappatura relay configurata nel sistema
+- Supporto completo per configurazioni personalizzate hardware
+
+### 🐛 Bug Fix
+- Corretto errore `get_clock_config` non definito nell'API recent-accesses
+- Sistemato allineamento orari tra dashboard e configurazione sistema
+- Fix formattazione timestamp secondo configurazione sistema (24h/12h)
+
+### 🔧 Miglioramenti Tecnici
+- API `/api/recent-accesses` ora legge configurazione timezone da `system_settings`
+- JavaScript dashboard usa campo `time_formatted` dal server
+- Eliminata dipendenza da timezone del browser per visualizzazione orari
+
 ## [2.2.0] - 2025-09-06
 
 ### 🎉 Nuove Funzionalità

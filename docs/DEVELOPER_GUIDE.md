@@ -92,10 +92,17 @@ def convert_utc_to_local(timestamp_str, timezone_name='Europe/Rome'):
     return dt_local.strftime('%Y-%m-%d %H:%M:%S')
 ```
 
+### Dashboard Ultimi Accessi (v2.3.0+)
+La sezione "Ultimi Accessi" nella dashboard ora rispetta il timezone configurato:
+- **API**: `/api/recent-accesses` legge timezone da `system_settings`
+- **Frontend**: JavaScript usa `time_formatted` dal server (non più conversione lato client)
+- **Formato**: Rispetta configurazione 24h/12h dalle impostazioni
+
 ### Punti Critici
 1. **Database**: SQLite salva sempre in UTC con `CURRENT_TIMESTAMP`
 2. **API Log Accessi**: `/api/log-accessi` converte automaticamente
-3. **Export**: Tutti i formati (CSV, Excel, PDF) usano timezone configurato
+3. **API Recent Accesses**: `/api/recent-accesses` usa timezone configurato (v2.3.0+)
+4. **Export**: Tutti i formati (CSV, Excel, PDF) usano timezone configurato
 
 ## 📊 Sistema Esportazioni
 
@@ -192,7 +199,7 @@ codice_fiscale = controller.read_card()  # Blocking
 controller.disconnect()
 ```
 
-### Test Lettore senza Interferenze
+### Test Lettore senza Interferenze (v2.2.0+)
 Il test del lettore ora funziona monitorando il database invece di accedere all'hardware:
 
 ```python
@@ -211,6 +218,27 @@ cursor.execute("""
 - `motivo_rifiuto`: Contiene la motivazione del rifiuto
 - `nome_utente`: Nome dell'utente se disponibile
 - `autorizzato`: Flag booleano per accesso autorizzato/negato
+
+**Funzione Stop Test:**
+- Endpoint: `POST /api/hardware/stop-reader`
+- Funzione: `stop_reader()` in `hardware_tests.py`
+- Interrompe il test senza interferire con il sistema principale
+
+### Test Completo Sistema (v2.3.0+)
+Il test integrato ora legge la configurazione relay dal database:
+
+```python
+# hardware_tests.py - test_integrated()
+# Legge configurazione relay dinamicamente
+cursor.execute("SELECT * FROM relay_config")
+relay_config = cursor.fetchall()
+
+# Applica configurazione per ogni dispositivo
+for relay in relay_config:
+    relay_num = relay[0]  # numero relay
+    device = relay[1]      # dispositivo
+    command = relay[3]     # comando attivazione
+```
 
 ### Controller Relè USB-RLY08
 ```python

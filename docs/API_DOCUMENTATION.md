@@ -48,6 +48,44 @@ Recupera informazioni utente corrente.
 
 ---
 
+## 📊 Dashboard Endpoints
+
+### GET `/api/recent-accesses`
+Recupera gli accessi recenti per la dashboard.
+
+**Query Parameters:**
+- `limit` (int): Numero massimo di risultati (default: 10)
+
+**Response:**
+```json
+{
+  "accesses": [
+    {
+      "timestamp": "2025-09-06T10:30:00",
+      "timestamp_formatted": "06/09/2025 10:30:00",
+      "time_formatted": "10:30:00",
+      "date_formatted": "06/09/2025",
+      "codice_fiscale": "RSSMRA85M01H501Z",
+      "nome": "Mario Rossi",
+      "autorizzato": true,
+      "motivo_rifiuto": null
+    },
+    {
+      "timestamp": "2025-09-06T10:25:00",
+      "codice_fiscale": "VRDGPP90A01H501A",
+      "nome": "Giuseppe Verdi",
+      "autorizzato": false,
+      "motivo_rifiuto": "Limite mensile accessi superato"
+    }
+  ]
+}
+```
+
+**Note v2.3.0+:**
+- Il campo `time_formatted` usa il timezone configurato nel sistema
+- Il formato ora rispetta la configurazione 24h/12h delle impostazioni
+- Non più dipendente dal timezone del browser
+
 ## 📊 Log Accessi Endpoints
 
 ### GET `/api/log-accessi`
@@ -227,7 +265,12 @@ Test apertura cancello (attiva relè configurati).
 ```
 
 ### POST `/api/hardware/test-reader`
-Test del lettore tessere con monitoraggio database.
+Test del lettore tessere con monitoraggio database (v2.2.0+).
+
+**Note v2.2.0+:**
+- Il test NON interferisce con il lettore hardware principale
+- Monitora il database `log_accessi` per nuovi inserimenti
+- Mostra le motivazioni di rifiuto dal campo `motivo_rifiuto`
 
 **Response:**
 ```json
@@ -238,7 +281,7 @@ Test del lettore tessere con monitoraggio database.
 ```
 
 ### POST `/api/hardware/stop-reader`
-Ferma il test del lettore tessere in esecuzione.
+Ferma il test del lettore tessere in esecuzione (v2.2.0+).
 
 **Response (test in esecuzione):**
 ```json
