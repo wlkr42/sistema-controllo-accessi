@@ -992,7 +992,12 @@ def log_accessi_page():
 @require_permission('all')  # Solo admin
 def admin_backup():
     """Backup & Restore - Solo Admin"""
-    return render_template_string(ADMIN_BACKUP_TEMPLATE, session=session)
+    # Forza reload del template per sviluppo
+    import importlib
+    import api.admin_templates
+    importlib.reload(api.admin_templates)
+    from api.admin_templates import ADMIN_BACKUP_TEMPLATE as FRESH_TEMPLATE
+    return render_template_string(FRESH_TEMPLATE, session=session)
 
 @app.route('/api/admin/clock-config', methods=['GET'])
 @require_auth()
@@ -3087,16 +3092,8 @@ def scheduled_backup():
 def api_backup_download(filename: str) -> FlaskResponse:
     return backup_module.download_backup(filename)
 
-# Elimina backup
-@app.route('/api/backup/delete/<filename>', methods=['DELETE'])
-@require_auth()
-@require_permission('all')
-def api_backup_delete(filename: str) -> FlaskResponse:
-    return backup_module.delete_backup(filename)
+# L'endpoint delete è già gestito dal Blueprint backup_bp
+# Non è necessario duplicarlo qui
 
-# Ripristina backup (sovrascrive access.db)
-@app.route('/api/backup/restore/<filename>', methods=['POST'])
-@require_auth()
-@require_permission('all')
-def api_backup_restore(filename: str) -> FlaskResponse:
-    return backup_module.restore_backup(filename)
+# L'endpoint restore è già gestito dal Blueprint backup_bp
+# Non è necessario duplicarlo qui

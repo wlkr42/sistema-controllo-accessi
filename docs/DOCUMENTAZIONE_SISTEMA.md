@@ -22,10 +22,11 @@ Sistema di controllo accessi per isola ecologica RAEE con:
 
 ### Stack Software
 - **Python 3.10** con virtual environment
-- **Flask** - Web framework
+- **Flask** - Web framework con Blueprint
 - **SQLite** - Database locale
 - **systemd** - Gestione servizio
 - **Git** - Versioning (repo: github.com/wlkr42/sistema-controllo-accessi)
+- **Backup System** - Sistema backup enterprise con cloud support
 
 ---
 

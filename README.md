@@ -26,7 +26,7 @@ pip install -r requirements.txt
 python3 scripts/init_database.py
 
 # Avvia servizio
-sudo systemctl start controllo-accessi
+sudo systemctl start access-control-web
 ```
 
 ## 📋 Caratteristiche

@@ -650,6 +650,19 @@ ADMIN_BACKUP_TEMPLATE = """
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/dashboard.css" rel="stylesheet">
     <link href="/static/css/user-menu.css" rel="stylesheet">
+    <style>
+        .nav-tabs .nav-link { color: #495057; }
+        .nav-tabs .nav-link.active { color: #0d6efd; font-weight: 500; }
+        .schedule-card { border-left: 4px solid #0d6efd; }
+        .schedule-card.disabled { border-left-color: #6c757d; opacity: 0.6; }
+        .cloud-provider-card { cursor: pointer; transition: all 0.3s; }
+        .cloud-provider-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .cloud-provider-card.selected { border-color: #0d6efd; background: #f0f8ff; }
+        .integrity-status { padding: 10px; border-radius: 5px; }
+        .integrity-status.success { background: #d4edda; color: #155724; }
+        .integrity-status.warning { background: #fff3cd; color: #856404; }
+        .integrity-status.danger { background: #f8d7da; color: #721c24; }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-dark">
@@ -742,32 +755,377 @@ ADMIN_BACKUP_TEMPLATE = """
                         <h5><i class="fas fa-cog me-2"></i>Configurazione Automatica</h5>
                     </div>
                     <div class="card-body">
-                        <form id="backup-config-form">
-                            <div class="mb-3">
-                                <label class="form-label">
-                                    <input type="checkbox" id="auto-backup-enabled"> Backup Automatici
-                                </label>
+                        <!-- Tabs per schedulazione -->
+                        <ul class="nav nav-tabs mb-3" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-bs-toggle="tab" href="#daily-schedule">Giornaliero</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#weekly-schedule">Settimanale</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#monthly-schedule">Mensile</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#yearly-schedule">Annuale</a>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content">
+                            <!-- Giornaliero -->
+                            <div class="tab-pane fade show active" id="daily-schedule">
+                                <div class="schedule-card card mb-3">
+                                    <div class="card-body">
+                                        <div class="form-check mb-2">
+                                            <input type="checkbox" class="form-check-input" id="daily-enabled" checked>
+                                            <label class="form-check-label" for="daily-enabled">
+                                                <strong>Abilita Backup Giornaliero</strong>
+                                            </label>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Ora</label>
+                                                <input type="time" class="form-control" id="daily-time" value="02:00">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Tipo</label>
+                                                <select class="form-select" id="daily-type">
+                                                    <option value="database" selected>Solo Database</option>
+                                                    <option value="complete">Completo</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <label class="form-label">Retention</label>
+                                            <input type="number" class="form-control" id="daily-retention" value="7" min="1" max="365">
+                                            <small class="text-muted">Mantieni per giorni</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Frequenza</label>
-                                <select class="form-select" id="backup-frequency">
-                                    <option value="daily">Giornaliero</option>
-                                    <option value="weekly" selected>Settimanale</option>
-                                    <option value="monthly">Mensile</option>
-                                </select>
+                            
+                            <!-- Settimanale -->
+                            <div class="tab-pane fade" id="weekly-schedule">
+                                <div class="schedule-card card mb-3">
+                                    <div class="card-body">
+                                        <div class="form-check mb-2">
+                                            <input type="checkbox" class="form-check-input" id="weekly-enabled" checked>
+                                            <label class="form-check-label" for="weekly-enabled">
+                                                <strong>Abilita Backup Settimanale</strong>
+                                            </label>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Giorno</label>
+                                                <select class="form-select" id="weekly-day">
+                                                    <option value="0" selected>Domenica</option>
+                                                    <option value="1">Lunedì</option>
+                                                    <option value="2">Martedì</option>
+                                                    <option value="3">Mercoledì</option>
+                                                    <option value="4">Giovedì</option>
+                                                    <option value="5">Venerdì</option>
+                                                    <option value="6">Sabato</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Ora</label>
+                                                <input type="time" class="form-control" id="weekly-time" value="03:00">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Tipo</label>
+                                                <select class="form-select" id="weekly-type">
+                                                    <option value="database">Solo Database</option>
+                                                    <option value="complete" selected>Completo</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <label class="form-label">Retention</label>
+                                            <input type="number" class="form-control" id="weekly-retention" value="4" min="1" max="52">
+                                            <small class="text-muted">Mantieni per settimane</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Mantieni per</label>
-                                <select class="form-select" id="backup-retention">
-                                    <option value="7">7 giorni</option>
-                                    <option value="30" selected>30 giorni</option>
-                                    <option value="90">90 giorni</option>
-                                </select>
+                            
+                            <!-- Mensile -->
+                            <div class="tab-pane fade" id="monthly-schedule">
+                                <div class="schedule-card card mb-3">
+                                    <div class="card-body">
+                                        <div class="form-check mb-2">
+                                            <input type="checkbox" class="form-check-input" id="monthly-enabled" checked>
+                                            <label class="form-check-label" for="monthly-enabled">
+                                                <strong>Abilita Backup Mensile</strong>
+                                            </label>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Giorno del mese</label>
+                                                <input type="number" class="form-control" id="monthly-day" value="1" min="1" max="28">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Ora</label>
+                                                <input type="time" class="form-control" id="monthly-time" value="04:00">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Tipo</label>
+                                                <select class="form-select" id="monthly-type">
+                                                    <option value="database">Solo Database</option>
+                                                    <option value="complete" selected>Completo</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <label class="form-label">Retention</label>
+                                            <input type="number" class="form-control" id="monthly-retention" value="6" min="1" max="24">
+                                            <small class="text-muted">Mantieni per mesi</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <button type="submit" class="btn btn-success w-100">
-                                <i class="fas fa-save"></i> Salva Configurazione
+                            
+                            <!-- Annuale -->
+                            <div class="tab-pane fade" id="yearly-schedule">
+                                <div class="schedule-card card mb-3">
+                                    <div class="card-body">
+                                        <div class="form-check mb-2">
+                                            <input type="checkbox" class="form-check-input" id="yearly-enabled">
+                                            <label class="form-check-label" for="yearly-enabled">
+                                                <strong>Abilita Backup Annuale</strong>
+                                            </label>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Mese</label>
+                                                <select class="form-select" id="yearly-month">
+                                                    <option value="1" selected>Gennaio</option>
+                                                    <option value="2">Febbraio</option>
+                                                    <option value="3">Marzo</option>
+                                                    <option value="4">Aprile</option>
+                                                    <option value="5">Maggio</option>
+                                                    <option value="6">Giugno</option>
+                                                    <option value="7">Luglio</option>
+                                                    <option value="8">Agosto</option>
+                                                    <option value="9">Settembre</option>
+                                                    <option value="10">Ottobre</option>
+                                                    <option value="11">Novembre</option>
+                                                    <option value="12">Dicembre</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Giorno</label>
+                                                <input type="number" class="form-control" id="yearly-day" value="1" min="1" max="28">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Ora</label>
+                                                <input type="time" class="form-control" id="yearly-time" value="05:00">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Tipo</label>
+                                                <select class="form-select" id="yearly-type">
+                                                    <option value="complete" selected>Completo</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <label class="form-label">Retention</label>
+                                            <input type="number" class="form-control" id="yearly-retention" value="3" min="1" max="10">
+                                            <small class="text-muted">Mantieni per anni</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                            <button type="button" class="btn btn-success w-100" onclick="saveBackupSchedule()">
+                                <i class="fas fa-save"></i> Salva Configurazione Schedulazione
                             </button>
-                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cloud Backup -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-cloud me-2"></i>Backup Cloud</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="cloud-provider-card card text-center p-3" data-provider="none">
+                                    <i class="fas fa-times-circle fa-3x text-muted mb-2"></i>
+                                    <h6>Nessuno</h6>
+                                    <small class="text-muted">Backup solo locale</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="cloud-provider-card card text-center p-3" data-provider="aws">
+                                    <i class="fab fa-aws fa-3x text-warning mb-2"></i>
+                                    <h6>Amazon S3</h6>
+                                    <small class="text-muted">Storage AWS</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="cloud-provider-card card text-center p-3" data-provider="google">
+                                    <i class="fab fa-google fa-3x text-primary mb-2"></i>
+                                    <h6>Google Cloud</h6>
+                                    <small class="text-muted">GCS Bucket</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="cloud-provider-card card text-center p-3" data-provider="ftp">
+                                    <i class="fas fa-server fa-3x text-success mb-2"></i>
+                                    <h6>FTP/SFTP</h6>
+                                    <small class="text-muted">Server remoto</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Configurazione Provider -->
+                        <div id="cloud-config" class="mt-3" style="display: none;">
+                            <hr>
+                            <h6>Configurazione <span id="selected-provider"></span></h6>
+                            
+                            <!-- FTP Config -->
+                            <div id="ftp-config" class="provider-config" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Host</label>
+                                        <input type="text" class="form-control" id="ftp-host" placeholder="ftp.esempio.com">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Porta</label>
+                                        <input type="number" class="form-control" id="ftp-port" value="21">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Percorso</label>
+                                        <input type="text" class="form-control" id="ftp-path" value="/backups">
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="ftp-username">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="ftp-password">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- AWS Config -->
+                            <div id="aws-config" class="provider-config" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Access Key</label>
+                                        <input type="text" class="form-control" id="aws-access-key">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Secret Key</label>
+                                        <input type="password" class="form-control" id="aws-secret-key">
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Bucket</label>
+                                        <input type="text" class="form-control" id="aws-bucket">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Region</label>
+                                        <select class="form-select" id="aws-region">
+                                            <option value="eu-west-1">EU (Ireland)</option>
+                                            <option value="eu-central-1">EU (Frankfurt)</option>
+                                            <option value="us-east-1">US East (N. Virginia)</option>
+                                            <option value="us-west-2">US West (Oregon)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="cloud-auto-sync">
+                                    <label class="form-check-label" for="cloud-auto-sync">
+                                        Sincronizza automaticamente dopo ogni backup
+                                    </label>
+                                </div>
+                                <button class="btn btn-primary mt-2" onclick="saveCloudConfig()">
+                                    <i class="fas fa-save"></i> Salva Configurazione Cloud
+                                </button>
+                                <button class="btn btn-success mt-2" onclick="syncToCloud()">
+                                    <i class="fas fa-cloud-upload-alt"></i> Sincronizza Ora
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Verifica Integrità -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-shield-alt me-2"></i>Verifica Integrità</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Configurazione Verifica Automatica</h6>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="integrity-enabled" checked>
+                                    <label class="form-check-label" for="integrity-enabled">
+                                        Abilita verifica integrità periodica
+                                    </label>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Frequenza</label>
+                                        <select class="form-select" id="integrity-schedule">
+                                            <option value="daily" selected>Giornaliera</option>
+                                            <option value="weekly">Settimanale</option>
+                                            <option value="monthly">Mensile</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Ora</label>
+                                        <input type="time" class="form-control" id="integrity-time" value="06:00">
+                                    </div>
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input type="checkbox" class="form-check-input" id="integrity-alert" checked>
+                                    <label class="form-check-label" for="integrity-alert">
+                                        Invia alert in caso di errori
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Ultimo Controllo</h6>
+                                <div id="integrity-status" class="integrity-status success">
+                                    <i class="fas fa-check-circle"></i> Tutti i backup sono integri
+                                    <small class="d-block mt-1">Ultimo controllo: <span id="last-check">Mai</span></small>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-primary" onclick="checkIntegrity()">
+                                        <i class="fas fa-shield-alt"></i> Verifica Ora
+                                    </button>
+                                    <button class="btn btn-warning" onclick="applyRetention()">
+                                        <i class="fas fa-broom"></i> Applica Retention
+                                    </button>
+                                </div>
+                                <div id="integrity-results" class="mt-3" style="display: none;">
+                                    <small class="text-muted">
+                                        Validi: <span id="valid-count">0</span> |
+                                        Corrotti: <span id="corrupted-count">0</span> |
+                                        Senza checksum: <span id="missing-count">0</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -928,27 +1286,59 @@ ADMIN_BACKUP_TEMPLATE = """
         
         function deleteBackup(filename) {
             if (confirm(`Eliminare il backup ${filename}?`)) {
-                fetch(`/api/backup/delete/${encodeURIComponent(filename)}`, {method: 'DELETE'})
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showAlert('Backup eliminato', 'success');
-                            loadBackupStatus();
-                        }
-                    });
+                fetch(`/api/backup/delete/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showAlert('Backup eliminato con successo', 'success');
+                        loadBackupStatus();
+                    } else {
+                        showAlert(`Errore eliminazione: ${data.error || 'Errore sconosciuto'}`, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore:', error);
+                    showAlert(`Errore di rete: ${error.message}`, 'danger');
+                });
             }
         }
         
         function restoreBackup(filename) {
             if (confirm(`ATTENZIONE: Il ripristino sovrascriverà la configurazione attuale.\\n\\nVuoi ripristinare il backup ${filename}?`)) {
-                fetch(`/api/backup/restore/${encodeURIComponent(filename)}`, {method: 'POST'})
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert('Ripristino completato. Il sistema verrà riavviato...');
-                            setTimeout(() => window.location.reload(), 3000);
-                        }
-                    });
+                fetch(`/api/backup/restore/${encodeURIComponent(filename)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert('Ripristino completato. Il sistema verrà riavviato...');
+                        setTimeout(() => window.location.reload(), 3000);
+                    } else {
+                        showAlert(`Errore ripristino: ${data.error || 'Errore sconosciuto'}`, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore:', error);
+                    showAlert(`Errore di rete: ${error.message}`, 'danger');
+                });
             }
         }
         
@@ -958,7 +1348,215 @@ ADMIN_BACKUP_TEMPLATE = """
         
         function showAlert(message, type) {
             // Implementazione notifiche
-            console.log(`${type}: ${message}`);
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+        
+        // Funzioni Cloud Backup
+        document.querySelectorAll('.cloud-provider-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.cloud-provider-card').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                const provider = this.dataset.provider;
+                document.getElementById('selected-provider').textContent = this.querySelector('h6').textContent;
+                
+                // Nascondi tutte le configurazioni
+                document.querySelectorAll('.provider-config').forEach(c => c.style.display = 'none');
+                
+                if (provider === 'none') {
+                    document.getElementById('cloud-config').style.display = 'none';
+                } else {
+                    document.getElementById('cloud-config').style.display = 'block';
+                    if (document.getElementById(`${provider}-config`)) {
+                        document.getElementById(`${provider}-config`).style.display = 'block';
+                    }
+                }
+            });
+        });
+        
+        function saveCloudConfig() {
+            const selectedProvider = document.querySelector('.cloud-provider-card.selected')?.dataset.provider;
+            if (!selectedProvider) {
+                showAlert('Seleziona un provider cloud', 'warning');
+                return;
+            }
+            
+            const config = {
+                cloud_backup: {
+                    enabled: selectedProvider !== 'none',
+                    provider: selectedProvider,
+                    auto_sync: document.getElementById('cloud-auto-sync').checked,
+                    credentials: {}
+                }
+            };
+            
+            // Raccogli credenziali in base al provider
+            if (selectedProvider === 'ftp') {
+                config.cloud_backup.credentials.ftp = {
+                    host: document.getElementById('ftp-host').value,
+                    port: parseInt(document.getElementById('ftp-port').value),
+                    username: document.getElementById('ftp-username').value,
+                    password: document.getElementById('ftp-password').value,
+                    path: document.getElementById('ftp-path').value
+                };
+            } else if (selectedProvider === 'aws') {
+                config.cloud_backup.credentials.aws = {
+                    access_key: document.getElementById('aws-access-key').value,
+                    secret_key: document.getElementById('aws-secret-key').value,
+                    bucket: document.getElementById('aws-bucket').value,
+                    region: document.getElementById('aws-region').value
+                };
+            }
+            
+            fetch('/api/backup/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Configurazione cloud salvata', 'success');
+                } else {
+                    showAlert(`Errore: ${data.error}`, 'danger');
+                }
+            });
+        }
+        
+        function syncToCloud() {
+            fetch('/api/backup/cloud/sync', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('Sincronizzazione cloud avviata', 'info');
+                    } else {
+                        showAlert(`Errore: ${data.error}`, 'danger');
+                    }
+                });
+        }
+        
+        // Funzioni Integrità
+        function checkIntegrity() {
+            fetch('/api/backup/integrity/check', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('Verifica integrità avviata', 'info');
+                        // Polling per risultati
+                        setTimeout(() => loadIntegrityResults(data.operation_id), 2000);
+                    } else {
+                        showAlert(`Errore: ${data.error}`, 'danger');
+                    }
+                });
+        }
+        
+        function loadIntegrityResults(operationId) {
+            fetch('/api/backup/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.operations && data.operations[operationId]) {
+                        const op = data.operations[operationId];
+                        if (op.status === 'completed') {
+                            const result = op.result;
+                            document.getElementById('valid-count').textContent = result.valid || 0;
+                            document.getElementById('corrupted-count').textContent = result.corrupted || 0;
+                            document.getElementById('missing-count').textContent = result.missing_checksum || 0;
+                            document.getElementById('integrity-results').style.display = 'block';
+                            
+                            // Aggiorna status
+                            const statusDiv = document.getElementById('integrity-status');
+                            if (result.corrupted > 0) {
+                                statusDiv.className = 'integrity-status danger';
+                                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Trovati backup corrotti!';
+                            } else if (result.missing_checksum > 0) {
+                                statusDiv.className = 'integrity-status warning';
+                                statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Alcuni backup senza checksum';
+                            } else {
+                                statusDiv.className = 'integrity-status success';
+                                statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Tutti i backup sono integri';
+                            }
+                            
+                            document.getElementById('last-check').textContent = new Date().toLocaleString('it-IT');
+                        } else if (op.status === 'running') {
+                            // Continua polling
+                            setTimeout(() => loadIntegrityResults(operationId), 2000);
+                        }
+                    }
+                });
+        }
+        
+        function applyRetention() {
+            if (confirm('Applicare le politiche di retention? I backup vecchi verranno eliminati.')) {
+                fetch('/api/backup/retention/apply', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showAlert(`Retention applicata: ${data.result.cleaned_files} file eliminati, ${data.result.freed_space} liberati`, 'success');
+                            loadBackupStatus();
+                        } else {
+                            showAlert(`Errore: ${data.error}`, 'danger');
+                        }
+                    });
+            }
+        }
+        
+        // Salvataggio configurazione schedulazione
+        function saveBackupSchedule() {
+            const config = {
+                auto_backup: {
+                    enabled: true,
+                    daily: {
+                        enabled: document.getElementById('daily-enabled').checked,
+                        time: document.getElementById('daily-time').value,
+                        type: document.getElementById('daily-type').value,
+                        retention_days: parseInt(document.getElementById('daily-retention').value)
+                    },
+                    weekly: {
+                        enabled: document.getElementById('weekly-enabled').checked,
+                        time: document.getElementById('weekly-time').value,
+                        day: document.getElementById('weekly-day').value,
+                        type: document.getElementById('weekly-type').value,
+                        retention_weeks: parseInt(document.getElementById('weekly-retention').value)
+                    },
+                    monthly: {
+                        enabled: document.getElementById('monthly-enabled').checked,
+                        time: document.getElementById('monthly-time').value,
+                        day: document.getElementById('monthly-day').value,
+                        type: document.getElementById('monthly-type').value,
+                        retention_months: parseInt(document.getElementById('monthly-retention').value)
+                    },
+                    yearly: {
+                        enabled: document.getElementById('yearly-enabled').checked,
+                        time: document.getElementById('yearly-time').value,
+                        month: document.getElementById('yearly-month').value,
+                        day: document.getElementById('yearly-day').value,
+                        type: document.getElementById('yearly-type').value,
+                        retention_years: parseInt(document.getElementById('yearly-retention').value)
+                    }
+                }
+            };
+            
+            fetch('/api/backup/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Schedulazione backup salvata', 'success');
+                } else {
+                    showAlert(`Errore: ${data.error}`, 'danger');
+                }
+            });
         }
     </script>
 </body>

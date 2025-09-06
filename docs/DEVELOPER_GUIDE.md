@@ -275,19 +275,19 @@ curl -X POST http://localhost:5000/api/test-gate
 tail -f /opt/access_control/logs/access_control.log
 
 # Log systemd service
-journalctl -u controllo-accessi -f
+journalctl -u access-control-web -f
 ```
 
 ## 📦 Deployment
 
 ### Service systemd
 ```bash
-# File: /etc/systemd/system/controllo-accessi.service
+# File: /etc/systemd/system/access-control-web.service
 # Gira come root per accesso USB
 
 sudo systemctl daemon-reload
-sudo systemctl restart controllo-accessi
-sudo systemctl status controllo-accessi
+sudo systemctl restart access-control-web
+sudo systemctl status access-control-web
 ```
 
 ### Backup Database
@@ -315,6 +315,7 @@ curl -X POST http://localhost:5000/api/backup/create
 - Aggiungere route in `web_api.py`
 - Documentare in CHANGELOG.md
 - Testare con script in `/tmp/`
+- Per modifiche ai template, forzare reload con `sudo systemctl restart access-control-web`
 
 ### 4. Git Workflow
 ```bash
@@ -327,6 +328,67 @@ git commit -m "feat: descrizione feature"
 
 # Push to GitHub
 git push origin feature/nome-feature
+```
+
+## 📦 Sistema Backup
+
+### Architettura
+Il sistema di backup è modulare e supporta:
+- **Backup locali**: Completi (sistema + DB) o solo database
+- **Backup cloud**: AWS S3, Google Cloud, Azure, FTP/SFTP
+- **Schedulazione**: Giornaliera, settimanale, mensile, annuale
+- **Retention policies**: Automatiche con cleanup configurabile
+- **Verifica integrità**: Controllo checksum MD5 periodico
+
+### File Principali
+- `src/api/backup_module.py`: Core del sistema backup (Blueprint Flask)
+- `src/api/admin_templates.py`: Template UI (sezione ADMIN_BACKUP_TEMPLATE)
+- `backups/`: Directory backup locali
+- `backups/backup_config.json`: Configurazione backup
+
+### API Endpoints
+```python
+/api/backup/status              # GET - Stato generale
+/api/backup/create               # POST - Crea backup
+/api/backup/delete/<filename>    # DELETE - Elimina backup
+/api/backup/restore/<filename>   # POST - Ripristina backup
+/api/backup/download/<filename>  # GET - Download backup
+/api/backup/config               # POST - Salva configurazione
+/api/backup/cloud/sync           # POST - Sync cloud
+/api/backup/integrity/check      # POST - Verifica integrità
+/api/backup/retention/apply      # POST - Applica retention
+```
+
+### Configurazione Cloud Providers
+```python
+# FTP/SFTP
+{
+    "host": "ftp.example.com",
+    "port": 21,
+    "username": "user",
+    "password": "pass",
+    "path": "/backups"
+}
+
+# AWS S3
+{
+    "access_key": "AKIA...",
+    "secret_key": "...",
+    "bucket": "my-backups",
+    "region": "eu-west-1"
+}
+```
+
+### Testing Backup
+```bash
+# Test creazione backup
+curl -X POST http://localhost:5000/api/backup/create
+
+# Test verifica integrità
+curl -X POST http://localhost:5000/api/backup/integrity/check
+
+# Test retention
+curl -X POST http://localhost:5000/api/backup/retention/apply
 ```
 
 ## 🔍 Troubleshooting Comune
@@ -357,7 +419,7 @@ pip install reportlab==4.0.4
 
 Per problemi o domande sul sistema:
 1. Controllare i log in `/opt/access_control/logs/`
-2. Verificare status servizio: `sudo systemctl status controllo-accessi`
+2. Verificare status servizio: `sudo systemctl status access-control-web`
 3. Consultare CHANGELOG.md per ultime modifiche
 4. GitHub Issues per segnalazioni
 

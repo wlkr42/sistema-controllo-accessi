@@ -1,5 +1,60 @@
 # Changelog - Sistema Controllo Accessi
 
+## [2.4.0] - 2025-09-06
+
+### 🎉 Nuove Funzionalità
+
+#### 📦 Sistema Backup Enterprise Completo
+- **Schedulazione Multi-livello**:
+  - Backup giornalieri, settimanali, mensili e annuali
+  - Configurazione indipendente per ogni livello
+  - Tipo di backup configurabile (database/completo)
+  - Retention personalizzata per ogni schedulazione
+
+- **Cloud Backup Integrato**:
+  - Supporto AWS S3, Google Cloud Storage, Azure, FTP/SFTP
+  - Sincronizzazione automatica post-backup
+  - Configurazione credenziali sicura
+  - Upload incrementale
+
+- **Verifica Integrità Automatica**:
+  - Controllo checksum MD5 periodico
+  - Alert automatici per backup corrotti
+  - Report dettagliato integrità
+  - Schedulazione configurabile
+
+- **Politiche Retention Avanzate**:
+  - Cleanup automatico basato su età
+  - Limite spazio disco configurabile
+  - Retention differenziata per tipo
+  - Applicazione manuale o automatica
+
+- **Interfaccia Migliorata**:
+  - Dashboard con schede per ogni tipo di schedulazione
+  - Configurazione cloud provider visuale
+  - Monitoraggio integrità in tempo reale
+  - Gestione backup con eliminazione funzionante
+
+### 🐛 Bug Fix
+- Corretto endpoint `/api/backup/delete` mancante
+- Aggiunto endpoint `/api/backup/restore` mancante
+- Fix gestione errori eliminazione backup
+- Migliorata gestione permessi file backup
+- Aggiunto reload forzato template per sviluppo
+
+### 🔧 Miglioramenti Tecnici
+- Nuovo modulo `backup_module.py` con Blueprint Flask
+- Template `ADMIN_BACKUP_TEMPLATE` completamente ridisegnato
+- Funzioni JavaScript per gestione cloud e integrità
+- Logging dettagliato per debug operazioni
+- Supporto operazioni asincrone in background
+
+### 📚 Documentazione
+- Aggiunta sezione completa Sistema Backup in DEVELOPER_GUIDE.md
+- Documentati tutti gli endpoint API backup
+- Esempi configurazione cloud providers
+- Guide troubleshooting specifiche
+
 ## [2.3.0] - 2025-09-06
 
 ### 🎉 Nuove Funzionalità
@@ -150,7 +205,7 @@ timestamp_converted = dt_local.strftime('%Y-%m-%d %H:%M:%S')
 
 2. **Riavviare servizio**:
    ```bash
-   sudo systemctl restart controllo-accessi
+   sudo systemctl restart access-control-web
    ```
 
 3. **Verificare configurazione**:

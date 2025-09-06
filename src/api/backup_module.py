@@ -27,24 +27,84 @@ BACKUP_DIR.mkdir(exist_ok=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configurazione di default
+# Configurazione di default migliorata
 DEFAULT_CONFIG = {
     'auto_backup': {
         'enabled': True,
         'daily': {
             'enabled': True,
-            'time': '02:00'
+            'time': '02:00',
+            'type': 'database',  # database o complete
+            'retention_days': 7
         },
         'weekly': {
             'enabled': True,
             'time': '03:00',
-            'day': '0'  # Domenica
+            'day': '0',  # Domenica
+            'type': 'complete',
+            'retention_weeks': 4
+        },
+        'monthly': {
+            'enabled': True,
+            'time': '04:00',
+            'day': '1',  # Primo del mese
+            'type': 'complete',
+            'retention_months': 6
+        },
+        'yearly': {
+            'enabled': False,
+            'time': '05:00',
+            'month': '1',  # Gennaio
+            'day': '1',
+            'type': 'complete',
+            'retention_years': 3
         }
     },
     'retention': {
-        'daily_keep': 7,    # Mantieni 7 giorni di backup giornalieri
-        'weekly_keep': 4,   # Mantieni 4 settimane di backup settimanali
-        'max_size_gb': 10   # Limite massimo spazio backup (GB)
+        'auto_cleanup': True,
+        'daily_keep': 7,
+        'weekly_keep': 4,
+        'monthly_keep': 6,
+        'yearly_keep': 3,
+        'max_size_gb': 10,
+        'cleanup_time': '01:00'
+    },
+    'cloud_backup': {
+        'enabled': False,
+        'provider': 'none',  # none, aws, google, azure, ftp
+        'auto_sync': False,
+        'sync_after_backup': True,
+        'credentials': {
+            'aws': {
+                'access_key': '',
+                'secret_key': '',
+                'bucket': '',
+                'region': 'eu-west-1'
+            },
+            'google': {
+                'credentials_json': '',
+                'bucket': ''
+            },
+            'azure': {
+                'connection_string': '',
+                'container': ''
+            },
+            'ftp': {
+                'host': '',
+                'port': 21,
+                'username': '',
+                'password': '',
+                'path': '/backups'
+            }
+        }
+    },
+    'integrity_check': {
+        'enabled': True,
+        'schedule': 'daily',
+        'time': '06:00',
+        'verify_checksums': True,
+        'test_restore': False,
+        'alert_on_failure': True
     }
 }
 
@@ -330,29 +390,53 @@ def create_db_backup(operation_id):
     else:
         raise FileNotFoundError("Database non trovato")
 
+@backup_bp.route('/delete/<filename>', methods=['DELETE', 'POST'])  # Aggiungi POST per compatibilità
 def delete_backup(filename):
     """Elimina un backup"""
     try:
+        logger.info(f"Richiesta eliminazione backup: {filename}")
+        
         # Sicurezza: verifica che sia nella directory backup
         file_path = BACKUP_DIR / filename
-        if not file_path.exists():
-            return jsonify({'success': False, 'error': 'File non trovato'})
         
-        if not str(file_path).startswith(str(BACKUP_DIR)):
+        # Log dettagliato per debug
+        logger.info(f"Percorso file: {file_path}")
+        logger.info(f"File esiste: {file_path.exists()}")
+        
+        if not file_path.exists():
+            logger.error(f"File non trovato: {file_path}")
+            return jsonify({'success': False, 'error': f'File non trovato: {filename}'})
+        
+        # Verifica sicurezza percorso
+        try:
+            file_path.resolve().relative_to(BACKUP_DIR.resolve())
+        except ValueError:
+            logger.error(f"Percorso non valido: {file_path}")
             return jsonify({'success': False, 'error': 'Percorso non valido'})
+        
+        # Verifica permessi
+        if not os.access(file_path, os.W_OK):
+            logger.error(f"Permessi insufficienti per eliminare: {file_path}")
+            return jsonify({'success': False, 'error': 'Permessi insufficienti per eliminare il file'})
         
         # Elimina file principale
         file_path.unlink()
+        logger.info(f"File eliminato: {file_path}")
         
         # Elimina anche checksum se esiste
         checksum_file = file_path.with_suffix(file_path.suffix + '.md5')
         if checksum_file.exists():
             checksum_file.unlink()
+            logger.info(f"Checksum eliminato: {checksum_file}")
         
-        return jsonify({'success': True, 'message': f'Backup {filename} eliminato'})
+        return jsonify({'success': True, 'message': f'Backup {filename} eliminato con successo'})
         
+    except PermissionError as e:
+        logger.error(f"Errore permessi eliminazione {filename}: {e}")
+        return jsonify({'success': False, 'error': f'Errore permessi: {str(e)}'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        logger.error(f"Errore eliminazione {filename}: {e}")
+        return jsonify({'success': False, 'error': f'Errore: {str(e)}'})
 
 @backup_bp.route('/cleanup', methods=['POST'])
 def cleanup_old_backups():
@@ -490,6 +574,7 @@ def update_crontab(config):
     except Exception as e:
         raise
 
+@backup_bp.route('/restore/<filename>', methods=['POST'])
 def restore_backup(filename):
     """Ripristina un backup"""
     try:
@@ -585,3 +670,288 @@ def format_size(bytes):
 
 # Stato globale operazioni
 backup_operations = {}
+
+# ===============================
+# NUOVE FUNZIONI CLOUD E INTEGRITY
+# ===============================
+
+@backup_bp.route('/cloud/sync', methods=['POST'])
+def sync_to_cloud():
+    """Sincronizza backup su cloud"""
+    try:
+        config = load_config()
+        cloud_config = config.get('cloud_backup', {})
+        
+        if not cloud_config.get('enabled'):
+            return jsonify({'success': False, 'error': 'Cloud backup non abilitato'})
+        
+        provider = cloud_config.get('provider')
+        if provider == 'none':
+            return jsonify({'success': False, 'error': 'Nessun provider cloud configurato'})
+        
+        # Avvia sync in background
+        operation_id = f"cloud_sync_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        def run_cloud_sync():
+            backup_operations[operation_id] = {
+                'status': 'running',
+                'type': 'cloud_sync',
+                'progress': 0,
+                'message': f'Sincronizzazione con {provider}...'
+            }
+            
+            try:
+                result = perform_cloud_sync(provider, cloud_config, operation_id)
+                backup_operations[operation_id]['status'] = 'completed'
+                backup_operations[operation_id]['result'] = result
+            except Exception as e:
+                backup_operations[operation_id]['status'] = 'error'
+                backup_operations[operation_id]['error'] = str(e)
+        
+        thread = threading.Thread(target=run_cloud_sync)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'operation_id': operation_id,
+            'message': f'Sincronizzazione cloud avviata con {provider}'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+def perform_cloud_sync(provider, config, operation_id):
+    """Esegue sync con provider cloud specifico"""
+    synced_files = []
+    
+    try:
+        if provider == 'ftp':
+            import ftplib
+            credentials = config['credentials']['ftp']
+            
+            backup_operations[operation_id]['message'] = 'Connessione FTP...'
+            ftp = ftplib.FTP(credentials['host'], credentials['username'], credentials['password'])
+            
+            # Cambia directory
+            ftp.cwd(credentials['path'])
+            
+            # Lista file locali da sincronizzare
+            local_files = list(BACKUP_DIR.glob("*.tar.gz")) + list(BACKUP_DIR.glob("*.db"))
+            total = len(local_files)
+            
+            for idx, file_path in enumerate(local_files):
+                backup_operations[operation_id]['progress'] = int((idx / total) * 100)
+                backup_operations[operation_id]['message'] = f'Upload {file_path.name}...'
+                
+                # Verifica se file esiste già
+                remote_files = ftp.nlst()
+                if file_path.name not in remote_files:
+                    with open(file_path, 'rb') as f:
+                        ftp.storbinary(f'STOR {file_path.name}', f)
+                    synced_files.append(file_path.name)
+            
+            ftp.quit()
+            
+        elif provider == 'aws':
+            # Implementazione AWS S3
+            try:
+                import boto3
+                credentials = config['credentials']['aws']
+                
+                s3 = boto3.client('s3',
+                    aws_access_key_id=credentials['access_key'],
+                    aws_secret_access_key=credentials['secret_key'],
+                    region_name=credentials['region']
+                )
+                
+                bucket = credentials['bucket']
+                local_files = list(BACKUP_DIR.glob("*.tar.gz")) + list(BACKUP_DIR.glob("*.db"))
+                
+                for file_path in local_files:
+                    s3.upload_file(str(file_path), bucket, file_path.name)
+                    synced_files.append(file_path.name)
+                    
+            except ImportError:
+                raise Exception("boto3 non installato. Esegui: pip install boto3")
+                
+        # Altri provider possono essere aggiunti qui
+        
+        return {
+            'synced_files': len(synced_files),
+            'files': synced_files[:10]
+        }
+        
+    except Exception as e:
+        raise Exception(f"Errore sync cloud: {str(e)}")
+
+@backup_bp.route('/integrity/check', methods=['POST'])
+def check_integrity():
+    """Verifica integrità di tutti i backup"""
+    try:
+        operation_id = f"integrity_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        def run_integrity_check():
+            backup_operations[operation_id] = {
+                'status': 'running',
+                'type': 'integrity_check',
+                'progress': 0,
+                'message': 'Verifica integrità backup...'
+            }
+            
+            try:
+                result = perform_integrity_check(operation_id)
+                backup_operations[operation_id]['status'] = 'completed'
+                backup_operations[operation_id]['result'] = result
+            except Exception as e:
+                backup_operations[operation_id]['status'] = 'error'
+                backup_operations[operation_id]['error'] = str(e)
+        
+        thread = threading.Thread(target=run_integrity_check)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'operation_id': operation_id,
+            'message': 'Verifica integrità avviata'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+def perform_integrity_check(operation_id):
+    """Esegue verifica integrità backup"""
+    import hashlib
+    
+    results = {
+        'total_files': 0,
+        'valid': 0,
+        'corrupted': 0,
+        'missing_checksum': 0,
+        'errors': []
+    }
+    
+    # Trova tutti i backup
+    backup_files = list(BACKUP_DIR.glob("*.tar.gz"))
+    results['total_files'] = len(backup_files)
+    
+    for idx, backup_file in enumerate(backup_files):
+        backup_operations[operation_id]['progress'] = int((idx / len(backup_files)) * 100)
+        backup_operations[operation_id]['message'] = f'Verifica {backup_file.name}...'
+        
+        checksum_file = backup_file.with_suffix('.tar.gz.md5')
+        
+        if not checksum_file.exists():
+            results['missing_checksum'] += 1
+            results['errors'].append(f"{backup_file.name}: checksum mancante")
+            continue
+        
+        # Calcola checksum attuale
+        hash_md5 = hashlib.md5()
+        try:
+            with open(backup_file, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_md5.update(chunk)
+            
+            actual_checksum = hash_md5.hexdigest()
+            expected_checksum = checksum_file.read_text().split()[0]
+            
+            if actual_checksum == expected_checksum:
+                results['valid'] += 1
+            else:
+                results['corrupted'] += 1
+                results['errors'].append(f"{backup_file.name}: checksum non valido")
+                
+        except Exception as e:
+            results['errors'].append(f"{backup_file.name}: errore lettura - {str(e)}")
+    
+    return results
+
+@backup_bp.route('/retention/apply', methods=['POST'])
+def apply_retention_policy():
+    """Applica politiche di retention manualmente"""
+    try:
+        config = load_config()
+        result = perform_retention_cleanup(config)
+        
+        return jsonify({
+            'success': True,
+            'result': result
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+def perform_retention_cleanup(config):
+    """Esegue pulizia secondo le politiche di retention"""
+    retention = config.get('retention', {})
+    cleaned = []
+    freed_space = 0
+    
+    now = datetime.now()
+    
+    # Organizza backup per tipo e data
+    backups_by_type = {
+        'daily': [],
+        'weekly': [],
+        'monthly': [],
+        'yearly': []
+    }
+    
+    for backup_file in BACKUP_DIR.glob("backup_*.tar.gz"):
+        file_date = datetime.fromtimestamp(backup_file.stat().st_mtime)
+        age_days = (now - file_date).days
+        
+        # Classifica il backup
+        if age_days <= 7:
+            backups_by_type['daily'].append(backup_file)
+        elif age_days <= 30:
+            backups_by_type['weekly'].append(backup_file)
+        elif age_days <= 365:
+            backups_by_type['monthly'].append(backup_file)
+        else:
+            backups_by_type['yearly'].append(backup_file)
+    
+    # Applica retention per tipo
+    for backup_type, files in backups_by_type.items():
+        keep_count = retention.get(f'{backup_type}_keep', 0)
+        
+        if keep_count > 0:
+            # Ordina per data, mantieni solo i più recenti
+            sorted_files = sorted(files, key=lambda x: x.stat().st_mtime, reverse=True)
+            
+            for file_to_delete in sorted_files[keep_count:]:
+                size = file_to_delete.stat().st_size
+                file_to_delete.unlink()
+                
+                # Elimina anche checksum
+                checksum = file_to_delete.with_suffix('.tar.gz.md5')
+                if checksum.exists():
+                    checksum.unlink()
+                
+                cleaned.append(file_to_delete.name)
+                freed_space += size
+    
+    # Controllo spazio massimo
+    total_size = sum(f.stat().st_size for f in BACKUP_DIR.rglob("*") if f.is_file())
+    max_size = retention.get('max_size_gb', 10) * 1024 * 1024 * 1024
+    
+    if total_size > max_size:
+        all_backups = sorted(BACKUP_DIR.glob("*"), key=lambda x: x.stat().st_mtime)
+        
+        for backup in all_backups:
+            if total_size <= max_size:
+                break
+            if backup.is_file() and backup.suffix in ['.gz', '.db']:
+                size = backup.stat().st_size
+                backup.unlink()
+                cleaned.append(backup.name)
+                freed_space += size
+                total_size -= size
+    
+    return {
+        'cleaned_files': len(cleaned),
+        'freed_space': format_size(freed_space),
+        'files': cleaned[:20]
+    }
