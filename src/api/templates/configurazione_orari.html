@@ -103,14 +103,45 @@
                             
                             <div class="form-group mb-3">
                                 <label for="ingressiMensili">Ingressi Effettuati nel Mese Corrente</label>
-                                <input type="number" class="form-control" id="ingressiMensili" min="0" required>
-                                <small class="form-text text-muted">Numero di ingressi già effettuati questo mese</small>
+                                <div class="progress position-relative" style="height: 35px;">
+                                    <div id="progressBarIngressi" class="progress-bar" role="progressbar" style="width: 0%;">
+                                        <span id="textIngressi" class="position-absolute w-100 text-center" style="line-height: 35px; color: #333; font-weight: bold;">
+                                            0 / 0
+                                        </span>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-chart-bar"></i>
+                                    Visualizzazione degli accessi effettuati rispetto al limite mensile
+                                </small>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="ingressiAggiuntivi">Ingressi Aggiuntivi da Concedere</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+</span>
+                                    <input type="number" class="form-control" id="ingressiAggiuntivi" min="0" value="0" placeholder="0">
+                                    <span class="input-group-text">ingressi extra</span>
+                                </div>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-plus-circle"></i>
+                                    Da usare SOLO se l'utente ha raggiunto il limite. Resetterà il contatore per permettere questi accessi extra.
+                                </small>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="motivazione">Motivazione (opzionale)</label>
+                                <input type="text" class="form-control" id="motivazione" placeholder="Es: Autorizzazione speciale per conferimento straordinario">
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-comment"></i>
+                                    Motivazione per la concessione di ingressi aggiuntivi
+                                </small>
                             </div>
 
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary" id="salvaIngressi">
-                                    <i class="fas fa-save me-2"></i>
-                                    Salva Conteggio
+                                    <i class="fas fa-plus-circle me-2"></i>
+                                    Concedi Ingressi Aggiuntivi
                                 </button>
                                 <button type="button" class="btn btn-success ms-2" id="simulaAccesso">
                                     <i class="fas fa-door-open me-2"></i>

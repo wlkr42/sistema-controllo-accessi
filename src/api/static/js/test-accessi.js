@@ -10,7 +10,10 @@ class TestAccessi {
     initElements() {
         this.utenteInput = document.getElementById('utente');
         this.searchResults = document.getElementById('searchResults');
-        this.ingressiInput = document.getElementById('ingressiMensili');
+        this.progressBarIngressi = document.getElementById('progressBarIngressi');
+        this.textIngressi = document.getElementById('textIngressi');
+        this.ingressiAggiuntiviInput = document.getElementById('ingressiAggiuntivi');
+        this.motivazioneInput = document.getElementById('motivazione');
         this.testForm = document.getElementById('testAccessoForm');
         this.utentiDisattivatiTable = document.getElementById('utentiDisattivati');
         this.cercaCFInput = document.getElementById('cercaCF');
@@ -38,6 +41,7 @@ class TestAccessi {
         // Ricerca utente inline
         this.utenteInput.addEventListener('input', (e) => {
             this.selectedUtente = null; // Reset selezione quando l'utente digita
+            this.resetProgressBar(); // Reset progress bar quando si cambia utente
             this.filtraUtenti(e.target.value);
         });
 
@@ -106,10 +110,75 @@ class TestAccessi {
         this.searchResults.style.display = 'block';
     }
 
-    selezionaUtente(utente) {
+    async selezionaUtente(utente) {
         this.selectedUtente = utente;
         this.utenteInput.value = utente.label;
         this.searchResults.style.display = 'none';
+        
+        // Carica informazioni accessi per l'utente selezionato
+        await this.caricaInfoAccessi(utente.codice_fiscale);
+    }
+
+    async caricaInfoAccessi(codice_fiscale) {
+        try {
+            const response = await fetch('/api/configurazione/utente-info-accessi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codice_fiscale })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.aggiornaProgressBar(data);
+            } else {
+                console.error('Errore caricamento info accessi:', data.error);
+                this.resetProgressBar();
+            }
+            
+        } catch (error) {
+            console.error('Errore connessione:', error);
+            this.resetProgressBar();
+        }
+    }
+
+    aggiornaProgressBar(data) {
+        const percentuale = data.percentuale_utilizzo || 0;
+        const ingressi = data.numero_accessi_mese || 0;
+        const limite = data.limite_mensile || 0;
+        
+        // Aggiorna progress bar
+        this.progressBarIngressi.style.width = `${Math.min(percentuale, 100)}%`;
+        this.textIngressi.textContent = `${ingressi} / ${limite}`;
+        
+        // Colore gradiente basato su percentuale
+        if (percentuale <= 50) {
+            this.progressBarIngressi.className = 'progress-bar bg-success';
+        } else if (percentuale <= 80) {
+            this.progressBarIngressi.className = 'progress-bar bg-warning';
+        } else {
+            this.progressBarIngressi.className = 'progress-bar bg-danger';
+        }
+        
+        // Abilita/disabilita campo ingressi aggiuntivi
+        const haRaggiuntoLimite = data.ingressi_rimanenti === 0;
+        this.ingressiAggiuntiviInput.disabled = !haRaggiuntoLimite;
+        
+        if (haRaggiuntoLimite) {
+            this.ingressiAggiuntiviInput.placeholder = 'Inserisci ingressi extra';
+        } else {
+            this.ingressiAggiuntiviInput.placeholder = 'Disponibile solo a limite raggiunto';
+            this.ingressiAggiuntiviInput.value = '0';
+        }
+    }
+
+    resetProgressBar() {
+        this.progressBarIngressi.style.width = '0%';
+        this.progressBarIngressi.className = 'progress-bar';
+        this.textIngressi.textContent = '0 / 0';
+        this.ingressiAggiuntiviInput.disabled = true;
+        this.ingressiAggiuntiviInput.placeholder = 'Seleziona prima un utente';
+        this.ingressiAggiuntiviInput.value = '0';
     }
 
     async loadUtentiDisattivati() {
@@ -158,28 +227,58 @@ class TestAccessi {
             showAlert('Seleziona un utente', 'warning');
             return;
         }
-        const codice_fiscale = this.selectedUtente.codice_fiscale;
-        const ingressi = parseInt(this.ingressiInput.value);
         
-        if (!codice_fiscale) {
-            showAlert('Seleziona un utente', 'warning');
+        const codice_fiscale = this.selectedUtente.codice_fiscale;
+        const ingressi_aggiuntivi = parseInt(this.ingressiAggiuntiviInput.value) || 0;
+        const motivazione = this.motivazioneInput.value.trim();
+        
+        if (ingressi_aggiuntivi <= 0) {
+            showAlert('Inserisci un numero di ingressi aggiuntivi valido', 'warning');
+            return;
+        }
+        
+        // Verifica che l'utente abbia raggiunto il limite prima di procedere
+        const infoResponse = await fetch('/api/configurazione/utente-info-accessi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codice_fiscale })
+        });
+        
+        const infoData = await infoResponse.json();
+        if (infoData.success && infoData.ingressi_rimanenti > 0) {
+            const ingressiRimanenti = infoData.ingressi_rimanenti;
+            const limite = infoData.limite_mensile;
+            showAlert(
+                `❌ L'utente ha ancora ${ingressiRimanenti} ingressi disponibili su ${limite}. ` +
+                `Non puoi aggiungere ingressi extra finché non raggiunge il limite.`,
+                'warning'
+            );
             return;
         }
         
         try {
-            const response = await fetch('/api/configurazione/test/set-ingressi', {
+            const response = await fetch('/api/configurazione/test/aggiungi-ingressi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ codice_fiscale, ingressi })
+                body: JSON.stringify({ 
+                    codice_fiscale, 
+                    ingressi_aggiuntivi,
+                    motivazione 
+                })
             });
             
             const data = await response.json();
             
             if (data.success) {
-                showAlert('Conteggio ingressi aggiornato', 'success');
+                showAlert(`✅ ${data.message}`, 'success');
                 this.loadUtentiDisattivati();
+                // Ricarica info accessi aggiornate
+                await this.caricaInfoAccessi(codice_fiscale);
+                // Reset campi
+                this.ingressiAggiuntiviInput.value = '0';
+                this.motivazioneInput.value = '';
             } else {
-                showAlert(data.error || 'Errore aggiornamento conteggio', 'danger');
+                showAlert(`❌ ${data.error}`, 'danger');
             }
             
         } catch (error) {
@@ -261,16 +360,26 @@ class TestAccessi {
             const data = await response.json();
             
             if (data.success) {
-                showAlert(data.message, 'success');
-                // Simula sequenza accesso autorizzato
-                await this.simulateAccessGranted();
-                // Ricarica dati
-                this.loadUtentiDisattivati();
-                this.ingressiInput.value = '';
+                if (data.accesso_consentito) {
+                    // Accesso consentito
+                    const msg = `✅ ${data.messaggio}\n${data.nome_utente}\nIngressi: ${data.numero_accessi_mese}/${data.limite_mensile}\n${data.nota || ''}`;
+                    showAlert(msg, 'success');
+                    // Simula sequenza accesso autorizzato
+                    await this.simulateAccessGranted();
+                } else {
+                    // Accesso negato
+                    const msg = `❌ ${data.motivo_rifiuto}\n${data.nome_utente || ''}\nIngressi: ${data.numero_accessi_mese}/${data.limite_mensile}`;
+                    showAlert(msg, 'warning');
+                    // Simula sequenza accesso negato
+                    await this.simulateAccessDenied();
+                }
+                // NON ricarichiamo i dati perché è solo una simulazione
+                // Ricarica info accessi se c'è un utente selezionato
+                if (this.selectedUtente) {
+                    await this.caricaInfoAccessi(this.selectedUtente.codice_fiscale);
+                }
             } else {
                 showAlert(data.error || 'Errore simulazione accesso', 'danger');
-                // Simula sequenza accesso negato
-                await this.simulateAccessDenied();
             }
             
         } catch (error) {

@@ -246,6 +246,54 @@ for relay in relay_config:
     command = relay[3]     # comando attivazione
 ```
 
+## Test Accessi e Gestione Ingressi Aggiuntivi (v2.8.0+)
+
+### Nuove Funzionalità Test Accessi
+La sezione Test Accessi nella configurazione orari ora include:
+
+#### Visualizzazione Progress Bar
+- Campo read-only con progress bar gradiente (verde→giallo→rosso)
+- Mostra automaticamente accessi/limite quando si seleziona un utente
+- Endpoint: `POST /api/configurazione/utente-info-accessi`
+
+```javascript
+// Caricamento automatico info utente
+await this.caricaInfoAccessi(codice_fiscale);
+// Aggiorna progress bar con colori gradiente
+this.aggiornaProgressBar(data);
+```
+
+#### Concessione Ingressi Aggiuntivi
+- Campo abilitato SOLO quando l'utente raggiunge il limite
+- Resetta il contatore per permettere N accessi extra
+- Endpoint: `POST /api/configurazione/test/aggiungi-ingressi`
+
+```python
+# Se limite=5 e utente ha 5 accessi, concedendo +2:
+nuovo_contatore = max(0, limite - ingressi_aggiuntivi)  # 5-2=3
+# L'utente potrà fare altri 2 accessi prima di raggiungere nuovamente il limite
+```
+
+#### Simulazione Accesso (NO LOG)
+- Verifica accessibilità senza modificare contatori
+- Non registra nei log_accessi
+- Endpoint: `POST /api/configurazione/test/simula-accesso`
+
+```python
+# Solo verifica, non modifica:
+if ingressi_attuali >= limite:
+    return jsonify({
+        'accesso_consentito': False,
+        'motivo_rifiuto': f'Limite mensile di {limite} ingressi raggiunto'
+    })
+# NON incrementa contatore, NON registra log
+```
+
+### Database - Tabelle Utilizzate
+- `conteggio_ingressi_mensili`: Contatore accessi mensili
+- `limiti_accesso`: Limite massimo ingressi mensili  
+- `log_forzature`: Log concessioni ingressi extra con motivazione
+
 ### Controller Relè USB-RLY08
 ```python
 from hardware.usb_rly08_controller import USBRLY08Controller

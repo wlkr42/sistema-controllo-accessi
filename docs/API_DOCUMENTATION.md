@@ -733,6 +733,119 @@ Elimina utente di sistema.
 
 ---
 
+## 🎯 Test Accessi e Configurazione
+
+### POST `/api/configurazione/utente-info-accessi`
+Recupera informazioni sugli accessi di un utente specifico.
+
+**Request Body:**
+```json
+{
+  "codice_fiscale": "RSSMRA80A01H501Z"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "nome_utente": "Mario Rossi",
+  "numero_accessi_mese": 3,
+  "limite_mensile": 5,
+  "percentuale_utilizzo": 60.0,
+  "ingressi_rimanenti": 2,
+  "utente_attivo": true,
+  "orario_consentito": true
+}
+```
+
+### POST `/api/configurazione/test/aggiungi-ingressi`
+Concede ingressi aggiuntivi a un utente che ha raggiunto il limite mensile.
+
+**Request Body:**
+```json
+{
+  "codice_fiscale": "RSSMRA80A01H501Z",
+  "ingressi_aggiuntivi": 2,
+  "motivazione": "Autorizzazione speciale per conferimento straordinario"
+}
+```
+
+**Validazione:**
+- L'utente deve aver raggiunto il limite mensile
+- `ingressi_aggiuntivi` deve essere > 0
+- La motivazione è opzionale ma consigliata
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Aggiunti 2 ingressi aggiuntivi. Contatore resettato.",
+  "nuovo_contatore": 3,
+  "ingressi_concessi": 2
+}
+```
+
+**Logica Reset Contatore:**
+- Se limite = 5 e utente ha 5 accessi
+- Concedendo +2 ingressi extra
+- Nuovo contatore = 5 - 2 = 3
+- L'utente potrà fare altri 2 accessi
+
+### POST `/api/configurazione/test/simula-accesso`
+Simula un tentativo di accesso SENZA modificare contatori o registrare log.
+
+**Request Body:**
+```json
+{
+  "codice_fiscale": "RSSMRA80A01H501Z"
+}
+```
+
+**Response (Accesso Consentito):**
+```json
+{
+  "success": true,
+  "accesso_consentito": true,
+  "messaggio": "Accesso CONSENTITO",
+  "nome_utente": "Mario Rossi",
+  "numero_accessi_mese": 3,
+  "limite_mensile": 5,
+  "percentuale_utilizzo": 60.0,
+  "ingressi_rimanenti": 2,
+  "nota": "Se l'utente accedesse ora, sarebbe il suo ingresso n. 4 su 5 consentiti",
+  "dispositivi_attivati": [
+    {
+      "dispositivo": "Motore Cancello",
+      "azione": "ON",
+      "durata": "1.0 secondi"
+    }
+  ]
+}
+```
+
+**Response (Accesso Negato):**
+```json
+{
+  "success": true,
+  "accesso_consentito": false,
+  "motivo_rifiuto": "Limite mensile di 5 ingressi raggiunto",
+  "nome_utente": "Mario Rossi",
+  "numero_accessi_mese": 5,
+  "limite_mensile": 5,
+  "percentuale_utilizzo": 100.0,
+  "nota": "L'utente verrà automaticamente disattivato al prossimo accesso reale"
+}
+```
+
+**Note Importanti:**
+- NON incrementa il contatore accessi
+- NON registra nei log_accessi
+- NON disattiva utenti
+- Solo verifica e mostra cosa succederebbe
+
+---
+
 ## 📝 Notes
 
 ### Rate Limiting
@@ -749,5 +862,5 @@ Elimina utente di sistema.
 
 ---
 
-**API Version**: 2.7.1  
+**API Version**: 2.8.0  
 **Last Updated**: 2025-09-06

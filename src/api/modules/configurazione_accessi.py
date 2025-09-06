@@ -569,24 +569,10 @@ def set_ingressi():
 @require_auth()
 @require_permission('all')
 def simula_accesso():
-    """Simula un tentativo di accesso come se fosse una lettura reale da Omnikey"""
+    """Simula un tentativo di accesso SENZA modificare contatori o registrare nei log"""
     data = request.get_json()
     if not data or 'codice_fiscale' not in data:
         return jsonify({'success': False, 'error': 'Codice fiscale mancante'}), 400
-    
-    # Simula lettura da Omnikey usando CardReader
-    import sys
-    import os
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-    from hardware.card_reader import CardReader
-    from hardware.usb_rly08_controller import USBRLY08Controller
-    
-    # Verifica orario prima di tutto
-    if not verifica_orario():
-        return jsonify({
-            'success': False, 
-            'error': 'Accesso non consentito in questo orario'
-        }), 403
     
     conn = get_db_connection()
     if not conn:
@@ -595,84 +581,99 @@ def simula_accesso():
     try:
         cursor = conn.cursor()
         oggi = datetime.now()
+        codice_fiscale = data['codice_fiscale']
         
-        # Verifica utente
+        # 1. Verifica esistenza utente
         cursor.execute('''
-            SELECT attivo 
+            SELECT nome, attivo 
             FROM utenti_autorizzati 
             WHERE codice_fiscale = ?
-        ''', (data['codice_fiscale'],))
+        ''', (codice_fiscale,))
         row = cursor.fetchone()
+        
         if not row:
-            return jsonify({'success': False, 'error': 'Utente non trovato'}), 404
-        if not row[0]:
-            return jsonify({'success': False, 'error': 'Utente disattivato'}), 403
+            return jsonify({
+                'success': True,
+                'accesso_consentito': False,
+                'motivo_rifiuto': 'Utente non trovato nel database',
+                'numero_accessi_mese': 0,
+                'limite_mensile': 0
+            })
         
-        # Verifica limite mensile
+        nome_utente = row[0]
+        utente_attivo = row[1]
+        
+        # 2. Recupera limite mensile
         cursor.execute('SELECT max_ingressi_mensili FROM limiti_accesso ORDER BY id DESC LIMIT 1')
-        limite = cursor.fetchone()[0]
+        limite_row = cursor.fetchone()
+        limite = limite_row[0] if limite_row else 3
         
+        # 3. Recupera numero accessi mese corrente (SENZA MODIFICARE)
         cursor.execute('''
             SELECT numero_ingressi 
             FROM conteggio_ingressi_mensili
             WHERE codice_fiscale = ? AND mese = ? AND anno = ?
-        ''', (data['codice_fiscale'], oggi.month, oggi.year))
+        ''', (codice_fiscale, oggi.month, oggi.year))
         row = cursor.fetchone()
         ingressi_attuali = row[0] if row else 0
         
-        if ingressi_attuali >= limite:
-            # Disattiva utente
-            cursor.execute('''
-                UPDATE utenti_autorizzati 
-                SET attivo = 0
-                WHERE codice_fiscale = ?
-            ''', (data['codice_fiscale'],))
-            conn.commit()
-            
+        # 4. Verifica se utente è disattivato
+        if not utente_attivo:
             return jsonify({
-                'success': False,
-                'error': f'Limite mensile di {limite} ingressi raggiunto'
-            }), 403
+                'success': True,
+                'accesso_consentito': False,
+                'motivo_rifiuto': 'Utente disattivato',
+                'nome_utente': nome_utente,
+                'numero_accessi_mese': ingressi_attuali,
+                'limite_mensile': limite,
+                'percentuale_utilizzo': round((ingressi_attuali / limite) * 100, 1) if limite > 0 else 0
+            })
         
-        # Incrementa contatore
-        cursor.execute('''
-            INSERT OR REPLACE INTO conteggio_ingressi_mensili 
-            (codice_fiscale, mese, anno, numero_ingressi, ultimo_ingresso)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ''', (data['codice_fiscale'], oggi.month, oggi.year, ingressi_attuali + 1))
+        # 5. Verifica orario di accesso
+        orario_consentito = verifica_orario()
+        if not orario_consentito:
+            return jsonify({
+                'success': True,
+                'accesso_consentito': False,
+                'motivo_rifiuto': 'Accesso non consentito in questo orario',
+                'nome_utente': nome_utente,
+                'numero_accessi_mese': ingressi_attuali,
+                'limite_mensile': limite,
+                'percentuale_utilizzo': round((ingressi_attuali / limite) * 100, 1) if limite > 0 else 0,
+                'ingressi_rimanenti': max(0, limite - ingressi_attuali)
+            })
         
-        # Registra accesso con dettagli simulazione
-        cursor.execute('''
-            INSERT INTO log_accessi 
-            (timestamp, codice_fiscale, autorizzato, metodo_lettura, qualita_lettura, tipo_accesso)
-            VALUES (CURRENT_TIMESTAMP, ?, 1, 'OMNIKEY_5427_G2', 100, 'simulazione')
-        ''', (data['codice_fiscale'],))
+        # 6. Verifica limite mensile
+        if ingressi_attuali >= limite:
+            return jsonify({
+                'success': True,
+                'accesso_consentito': False,
+                'motivo_rifiuto': f'Limite mensile di {limite} ingressi raggiunto',
+                'nome_utente': nome_utente,
+                'numero_accessi_mese': ingressi_attuali,
+                'limite_mensile': limite,
+                'percentuale_utilizzo': round((ingressi_attuali / limite) * 100, 1) if limite > 0 else 0,
+                'nota': "L'utente verrà automaticamente disattivato al prossimo accesso reale"
+            })
         
-        conn.commit()
-        
-        # Simula lettura tessera
-        reader = CardReader()
-        reader.last_cf = data['codice_fiscale']  # Simula lettura
-        
-        # Sollecita il relè come nella lettura reale
-        controller = USBRLY08Controller()
-        if controller.connect():
-            # Segnala accesso autorizzato (LED Verde + Buzzer)
-            controller.access_granted()
-            
-            # Apri cancello (disattiva blocco magnetico, attiva motore, riattiva blocco)
-            controller.open_gate(8.0)  # 8 secondi
-            
-            controller.disconnect()
-        
+        # 7. SIMULAZIONE: Accesso consentito (ma NON incrementiamo il contatore)
         return jsonify({
             'success': True,
-            'message': f'Accesso autorizzato (ingresso {ingressi_attuali + 1}/{limite})',
-            'details': {
-                'lettore': 'OMNIKEY 5427 G2',
-                'qualita_lettura': '100%',
-                'apertura_rele': '8 secondi'
-            }
+            'accesso_consentito': True,
+            'messaggio': 'Accesso CONSENTITO',
+            'nome_utente': nome_utente,
+            'numero_accessi_mese': ingressi_attuali,
+            'limite_mensile': limite,
+            'percentuale_utilizzo': round((ingressi_attuali / limite) * 100, 1) if limite > 0 else 0,
+            'ingressi_rimanenti': limite - ingressi_attuali,
+            'nota': f"Se l'utente accedesse ora, sarebbe il suo ingresso n. {ingressi_attuali + 1} su {limite} consentiti",
+            'dispositivi_attivati': [
+                {
+                    'dispositivo': 'Motore Cancello',
+                    'azione': 'ON',
+                    'durata': '1.0 secondi'
+                }
+            ]
         })
         
     except Exception as e:
@@ -804,6 +805,174 @@ def get_log_forzature():
             })
         
         return jsonify({'success': True, 'log': log})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@configurazione_accessi_bp.route('/api/configurazione/utente-info-accessi', methods=['POST'])
+@require_auth()
+def get_utente_info_accessi():
+    """Recupera informazioni accessi per un utente specifico"""
+    data = request.get_json()
+    if not data or 'codice_fiscale' not in data:
+        return jsonify({'success': False, 'error': 'Codice fiscale mancante'}), 400
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database non disponibile'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        oggi = datetime.now()
+        codice_fiscale = data['codice_fiscale']
+        
+        # Recupera info utente
+        cursor.execute('''
+            SELECT nome, attivo 
+            FROM utenti_autorizzati 
+            WHERE codice_fiscale = ?
+        ''', (codice_fiscale,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return jsonify({
+                'success': True,
+                'nome_utente': 'Utente non trovato',
+                'numero_accessi_mese': 0,
+                'limite_mensile': 0,
+                'percentuale_utilizzo': 0,
+                'ingressi_rimanenti': 0,
+                'utente_attivo': False
+            })
+        
+        nome_utente = row[0]
+        utente_attivo = bool(row[1])
+        
+        # Recupera limite mensile
+        cursor.execute('SELECT max_ingressi_mensili FROM limiti_accesso ORDER BY id DESC LIMIT 1')
+        limite_row = cursor.fetchone()
+        limite = limite_row[0] if limite_row else 3
+        
+        # Recupera numero accessi mese corrente
+        cursor.execute('''
+            SELECT numero_ingressi 
+            FROM conteggio_ingressi_mensili
+            WHERE codice_fiscale = ? AND mese = ? AND anno = ?
+        ''', (codice_fiscale, oggi.month, oggi.year))
+        row = cursor.fetchone()
+        ingressi_attuali = row[0] if row else 0
+        
+        # Verifica orario (opzionale, per info)
+        orario_consentito = verifica_orario()
+        
+        return jsonify({
+            'success': True,
+            'nome_utente': nome_utente,
+            'numero_accessi_mese': ingressi_attuali,
+            'limite_mensile': limite,
+            'percentuale_utilizzo': round((ingressi_attuali / limite) * 100, 1) if limite > 0 else 0,
+            'ingressi_rimanenti': max(0, limite - ingressi_attuali),
+            'utente_attivo': utente_attivo,
+            'orario_consentito': orario_consentito
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@configurazione_accessi_bp.route('/api/configurazione/test/aggiungi-ingressi', methods=['POST'])
+@require_auth()
+@require_permission('all')
+def aggiungi_ingressi():
+    """Aggiunge ingressi aggiuntivi a un utente SOLO se ha raggiunto il limite"""
+    data = request.get_json()
+    if not data or 'codice_fiscale' not in data or 'ingressi_aggiuntivi' not in data:
+        return jsonify({'success': False, 'error': 'Dati mancanti'}), 400
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database non disponibile'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        oggi = datetime.now()
+        codice_fiscale = data['codice_fiscale']
+        ingressi_aggiuntivi = int(data['ingressi_aggiuntivi'])
+        motivazione = data.get('motivazione', '')
+        
+        if ingressi_aggiuntivi <= 0:
+            return jsonify({'success': False, 'error': 'Numero ingressi aggiuntivi non valido'}), 400
+        
+        # Verifica esistenza utente
+        cursor.execute('SELECT nome, attivo FROM utenti_autorizzati WHERE codice_fiscale = ?', 
+                      (codice_fiscale,))
+        utente = cursor.fetchone()
+        if not utente:
+            return jsonify({'success': False, 'error': 'Utente non trovato'}), 404
+        
+        nome_utente = utente[0]
+        
+        # Recupera limite mensile
+        cursor.execute('SELECT max_ingressi_mensili FROM limiti_accesso ORDER BY id DESC LIMIT 1')
+        limite_row = cursor.fetchone()
+        limite = limite_row[0] if limite_row else 3
+        
+        # Recupera numero accessi corrente
+        cursor.execute('''
+            SELECT numero_ingressi 
+            FROM conteggio_ingressi_mensili
+            WHERE codice_fiscale = ? AND mese = ? AND anno = ?
+        ''', (codice_fiscale, oggi.month, oggi.year))
+        row = cursor.fetchone()
+        ingressi_attuali = row[0] if row else 0
+        
+        # IMPORTANTE: Verifica che l'utente abbia raggiunto il limite
+        ingressi_rimanenti = limite - ingressi_attuali
+        if ingressi_rimanenti > 0:
+            return jsonify({
+                'success': False, 
+                'error': f"L'utente ha ancora {ingressi_rimanenti} ingressi disponibili. Non è possibile aggiungere ingressi extra finché non raggiunge il limite."
+            }), 400
+        
+        # Calcola il nuovo contatore per permettere esattamente N ingressi aggiuntivi
+        # Se voglio permettere N ingressi, imposto il contatore a (limite - N)
+        nuovo_contatore = max(0, limite - ingressi_aggiuntivi)
+        
+        # Aggiorna o inserisce il conteggio
+        cursor.execute('''
+            INSERT OR REPLACE INTO conteggio_ingressi_mensili 
+            (codice_fiscale, mese, anno, numero_ingressi, ultimo_ingresso)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (codice_fiscale, oggi.month, oggi.year, nuovo_contatore))
+        
+        # Riattiva sempre l'utente quando si aggiungono ingressi
+        cursor.execute('''
+            UPDATE utenti_autorizzati 
+            SET attivo = 1
+            WHERE codice_fiscale = ?
+        ''', (codice_fiscale,))
+        
+        # Log l'operazione con motivazione
+        dettaglio = f'Aggiunti {ingressi_aggiuntivi} ingressi a {nome_utente} ({codice_fiscale}) - Contatore resettato da {ingressi_attuali} a {nuovo_contatore}'
+        if motivazione:
+            dettaglio += f' - Motivazione: {motivazione}'
+        
+        cursor.execute('''
+            INSERT INTO log_forzature
+            (tipo, utente, dettagli)
+            VALUES ('AGGIUNGI_INGRESSI', ?, ?)
+        ''', (session.get('username', 'unknown'), dettaglio))
+        
+        conn.commit()
+        return jsonify({
+            'success': True, 
+            'message': f'Aggiunti {ingressi_aggiuntivi} ingressi aggiuntivi. Contatore resettato.',
+            'nuovo_contatore': nuovo_contatore,
+            'ingressi_concessi': ingressi_aggiuntivi
+        })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

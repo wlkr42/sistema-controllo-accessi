@@ -5,6 +5,30 @@ Tutte le modifiche importanti a questo progetto sono documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.0.0/),
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2025-09-06
+
+### ✨ Aggiunto
+- **Test Accessi Avanzato**: Nuova interfaccia per test e gestione accessi nella configurazione orari
+  - Progress bar read-only con gradiente colore per visualizzazione accessi/limite
+  - Campo "Ingressi Aggiuntivi" abilitato solo quando utente raggiunge limite
+  - Campo "Motivazione" opzionale per documentare concessioni extra
+  - Caricamento automatico info accessi quando si seleziona utente
+
+### 🔧 Modificato
+- **Simulazione Accesso**: Non registra più nei log e non modifica contatori
+  - Solo verifica accessibilità senza effetti collaterali
+  - Mostra cosa succederebbe con un accesso reale
+  - Mantiene integrità dati durante test
+
+### 🔌 API
+- `POST /api/configurazione/utente-info-accessi`: Recupera info accessi utente
+- `POST /api/configurazione/test/aggiungi-ingressi`: Concede ingressi extra (solo a limite raggiunto)
+- `POST /api/configurazione/test/simula-accesso`: Simula accesso senza modifiche
+
+### 🗄️ Database
+- Utilizza tabelle esistenti: `conteggio_ingressi_mensili`, `limiti_accesso`, `log_forzature`
+- Logica reset contatore: limite - ingressi_extra = nuovo_contatore
+
 ## [2.7.1] - 2025-09-06
 
 ### 🎨 Migliorato
