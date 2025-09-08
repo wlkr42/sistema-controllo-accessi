@@ -1,5 +1,31 @@
 # Changelog - Sistema Controllo Accessi
 
+## [2.9.3] - 2025-09-08
+
+### 🔒 Fix Sicurezza Password SMTP
+
+#### Problema Risolto
+- **Password SMTP visibile in chiaro**: Il campo password nella configurazione email mostrava "Password salvata" come testo leggibile invece di nasconderla
+
+#### Soluzione Implementata
+- **Campo password mascherato**: Ora mostra pallini (••••••••) quando c'è una password salvata
+- **Interazione intelligente**: 
+  - I pallini vengono mostrati quando la password è già configurata
+  - Al click sul campo, si svuota automaticamente per permettere l'inserimento di una nuova password
+  - Se non modificata, i pallini non vengono inviati al server
+- **Gestione sicura**: 
+  - Il backend continua a non restituire mai la password reale (invia '********')
+  - Il frontend gestisce correttamente questo placeholder
+
+### 📁 File Modificati
+- `src/api/static/js/sistema.js`: Logica completa gestione password con pallini
+- `src/api/modules/email_config.py`: Fix nel template JavaScript inline
+
+### 🔧 Dettagli Tecnici
+- Aggiunto attributo `data-saved` per tracciare stato password salvata
+- Event listener `focus` con `once: true` per pulizia automatica campo
+- Controllo invio: non invia '••••••••' se password non modificata
+
 ## [2.9.2] - 2025-09-08
 
 ### 🔧 Miglioramenti Dashboard Admin

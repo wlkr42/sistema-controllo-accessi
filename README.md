@@ -1,8 +1,14 @@
-# Sistema Controllo Accessi - v2.9.2
+# Sistema Controllo Accessi - v2.9.3
 
 Sistema completo per il controllo degli accessi tramite tessera sanitaria con gestione hardware, interfaccia web e funzionalità avanzate.
 
-## ✨ Ultime Novità (v2.9.2)
+## ✨ Ultime Novità (v2.9.3)
+
+- 🔒 **Fix Sicurezza Password SMTP**: Password ora nascosta con pallini (••••••••) invece di testo in chiaro
+- 🎯 **Gestione Password Intelligente**: Click sul campo svuota automaticamente per nuova password
+- 🛡️ **Sicurezza Migliorata**: Nessun invio di dati sensibili se password non modificata
+
+## ✨ Novità v2.9.2
 
 - 📊 **Statistiche Sistema Real-Time**: Metriche live CPU, RAM, uptime in dashboard admin
 - 📝 **Console Debug Potenziata**: Visualizzazione estesa fino a 2000 righe di log

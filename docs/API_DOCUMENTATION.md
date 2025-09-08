@@ -10,6 +10,16 @@ Il sistema utilizza session-based authentication. Dopo il login, viene impostato
 
 ---
 
+## 🔐 Security & Configuration
+
+### Password Field Handling
+Tutti i campi password nel sistema seguono queste regole di sicurezza:
+
+- **Backend**: Non restituisce mai password in chiaro (ritorna `'********'` se presente)
+- **Frontend**: Mostra pallini `••••••••` quando password salvata
+- **Interazione**: Click sul campo pulisce automaticamente per nuova password
+- **Salvataggio**: Non invia i pallini se password non modificata
+
 ## 📊 System Monitoring Endpoints
 
 ### GET `/api/system-status`

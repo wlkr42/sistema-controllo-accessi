@@ -201,9 +201,23 @@ async function loadEmailConfig() {
             document.getElementById('smtp-porta').value = data.config.smtp_port || '587';
             document.getElementById('smtp-security').value = data.config.smtp_security || 'STARTTLS';
             document.getElementById('smtp-username').value = data.config.username || '';
-            // Non mostriamo la password per sicurezza
+            // Gestione password: mostra pallini se c'è una password salvata
+            const passwordField = document.getElementById('smtp-password');
             if (data.config.password && data.config.password === '********') {
-                document.getElementById('smtp-password').placeholder = 'Password salvata';
+                // Imposta pallini come valore per mostrare che c'è una password
+                passwordField.value = '••••••••';
+                passwordField.setAttribute('data-saved', 'true');
+                
+                // Quando l'utente clicca o digita, pulisci i pallini per permettere nuova password
+                passwordField.addEventListener('focus', function() {
+                    if (this.value === '••••••••' && this.getAttribute('data-saved') === 'true') {
+                        this.value = '';
+                        this.removeAttribute('data-saved');
+                    }
+                }, { once: true });
+            } else {
+                passwordField.value = '';
+                passwordField.removeAttribute('data-saved');
             }
             document.getElementById('email-mittente').value = data.config.mittente || '';
             document.getElementById('report-automatici').checked = data.config.enabled === '1';
@@ -244,6 +258,15 @@ function saveEmailConfig(e) {
     e.preventDefault();
     console.log('saveEmailConfig chiamata');
     
+    // Gestione password: non inviare se sono i pallini (password non modificata)
+    const passwordField = document.getElementById('smtp-password');
+    let passwordValue = passwordField.value;
+    
+    // Se il campo contiene i pallini e ha l'attributo data-saved, non inviare la password
+    if (passwordValue === '••••••••' && passwordField.getAttribute('data-saved') === 'true') {
+        passwordValue = ''; // Non inviare nulla, mantieni quella salvata
+    }
+    
     // Prepara i dati per l'API email_config
     const emailData = {
         smtp_server: document.getElementById('smtp-server').value,
@@ -251,7 +274,7 @@ function saveEmailConfig(e) {
         mittente: document.getElementById('email-mittente').value,
         smtp_security: document.getElementById('smtp-security').value,
         username: document.getElementById('smtp-username').value,
-        password: document.getElementById('smtp-password').value,
+        password: passwordValue,
         enabled: document.getElementById('report-automatici').checked ? '1' : '0'
     };
     

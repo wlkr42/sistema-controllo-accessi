@@ -553,6 +553,45 @@ pip install reportlab==4.0.4
 2. Controllare configurazione in database `relay_config`
 3. Test via API: `/api/test-gate`
 
+## 🔒 Best Practices Sicurezza
+
+### Gestione Password nei Form Web
+
+Il sistema implementa un pattern sicuro per la gestione delle password nei form:
+
+**Pattern JavaScript Standard:**
+```javascript
+// Caricamento configurazione con password salvata
+if (data.config.password === '********') {  // Backend invia asterischi
+    passwordField.value = '••••••••';        // Mostra pallini
+    passwordField.setAttribute('data-saved', 'true');
+    
+    // Pulisci al primo focus
+    passwordField.addEventListener('focus', function() {
+        if (this.value === '••••••••' && this.getAttribute('data-saved') === 'true') {
+            this.value = '';
+            this.removeAttribute('data-saved');
+        }
+    }, { once: true });
+}
+
+// Salvataggio: non inviare pallini
+if (passwordValue === '••••••••' && passwordField.getAttribute('data-saved') === 'true') {
+    passwordValue = '';  // Mantieni password esistente sul server
+}
+```
+
+**Principi di Sicurezza:**
+1. **Backend**: Mai restituire password reali (usa `'********'`)
+2. **Frontend**: Mostrare pallini visibili per UX chiara
+3. **Interazione**: Pulizia automatica per nuova password
+4. **Invio**: Non inviare placeholder al backend
+
+### Esempio Implementazione (Email Config)
+- File: `src/api/static/js/sistema.js`
+- Funzioni: `loadEmailConfig()`, `saveEmailConfig()`
+- Campo: `#smtp-password`
+
 ## 📞 Contatti e Supporto
 
 Per problemi o domande sul sistema:

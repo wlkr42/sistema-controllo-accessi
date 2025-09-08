@@ -335,7 +335,11 @@ async function loadEmailConfig() {
             document.getElementById('smtp-port').value = data.config.smtp_port || '587';
             document.getElementById('smtp-security').value = data.config.smtp_security || 'STARTTLS';
             document.getElementById('smtp-username').value = data.config.username || '';
-            document.getElementById('smtp-password').value = data.config.password || '';
+            // Non mostrare la password reale, solo placeholder se esiste
+            if (data.config.password) {
+                document.getElementById('smtp-password').placeholder = '••••••••';
+                document.getElementById('smtp-password').value = '';
+            }
             document.getElementById('email-mittente').value = data.config.mittente || '';
             document.getElementById('email-enabled').checked = data.config.enabled === '1';
         }
