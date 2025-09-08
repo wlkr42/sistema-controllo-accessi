@@ -3,29 +3,31 @@
     "enabled": true,
     "daily": {
       "enabled": true,
-      "time": "02:00"
+      "time": "02:00",
+      "type": "database",
+      "retention_days": 7
     },
     "weekly": {
       "enabled": true,
-      "day": 0,
-      "time": "03:00"
+      "time": "03:00",
+      "day": "0",
+      "type": "complete",
+      "retention_weeks": 4
     },
     "monthly": {
+      "enabled": true,
+      "time": "04:00",
+      "day": "1",
+      "type": "complete",
+      "retention_months": 6
+    },
+    "yearly": {
       "enabled": false,
-      "day": 1,
-      "time": "03:00"
+      "time": "05:00",
+      "month": "1",
+      "day": "1",
+      "type": "complete",
+      "retention_years": 3
     }
-  },
-  "retention": {
-    "daily_keep": 7,
-    "weekly_keep": 4,
-    "monthly_keep": 6,
-    "max_size_gb": 10
-  },
-  "notifications": {
-    "email_enabled": false,
-    "email_to": "",
-    "on_error": true,
-    "on_success": false
   }
 }

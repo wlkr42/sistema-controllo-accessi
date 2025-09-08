@@ -148,8 +148,9 @@ def get_backup_status():
             stat = backup.stat()
             total_size += stat.st_size
             
-            # Verifica checksum
-            has_checksum = backup.with_suffix('.tar.gz.md5').exists()
+            # Verifica checksum - FIX: usa il nome corretto
+            checksum_path = BACKUP_DIR / f"{backup.name}.md5"
+            has_checksum = checksum_path.exists()
             
             backups.append({
                 'name': backup.name,
@@ -160,13 +161,17 @@ def get_backup_status():
                 'age_days': (datetime.now() - datetime.fromtimestamp(stat.st_mtime)).days,
                 'has_checksum': has_checksum,
                 'can_download': True,
-                'can_restore': has_checksum
+                'can_restore': has_checksum  # Solo con checksum valido
             })
         
         # Backup database
         for db_backup in sorted(BACKUP_DIR.glob("access_*.db"), reverse=True)[:10]:
             stat = db_backup.stat()
             total_size += stat.st_size
+            
+            # Verifica checksum anche per database
+            checksum_path = BACKUP_DIR / f"{db_backup.name}.md5"
+            has_checksum = checksum_path.exists()
             
             backups.append({
                 'name': db_backup.name,
@@ -175,10 +180,15 @@ def get_backup_status():
                 'size_bytes': stat.st_size,
                 'date': datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 'age_days': (datetime.now() - datetime.fromtimestamp(stat.st_mtime)).days,
-                'has_checksum': False,
+                'has_checksum': has_checksum,
                 'can_download': True,
-                'can_restore': False
+                'can_restore': has_checksum  # ORA POSSONO ESSERE RIPRISTINATI!
             })
+        
+        # Trova ultimo backup
+        last_backup = 'Mai'
+        if backups:
+            last_backup = backups[0]['date']
         
         # Statistiche disco
         disk_stat = os.statvfs(BACKUP_DIR)
@@ -188,8 +198,9 @@ def get_backup_status():
         return jsonify({
             'success': True,
             'backups': backups[:20],  # Ultimi 20
-            'total_backups': len(list(BACKUP_DIR.glob("*"))),
+            'total_backups': len(backups),
             'total_size': format_size(total_size),
+            'last_backup': last_backup,
             'disk_free': format_size(disk_free),
             'disk_used_percent': round((1 - disk_free/disk_total) * 100, 1),
             'config': load_config(),
@@ -197,12 +208,17 @@ def get_backup_status():
         })
         
     except Exception as e:
+        logger.error(f"Errore get_backup_status: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 @backup_bp.route('/create', methods=['POST'])
-def create_backup(backup_type='complete'):
+def create_backup():
     """Crea nuovo backup"""
     try:
+        # LEGGI IL TIPO DAL JSON POST
+        data = request.get_json() or {}
+        backup_type = data.get('type', 'complete')  # Default 'complete' se non specificato
+        
         operation_id = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         # Avvia backup in thread
@@ -339,7 +355,9 @@ def create_complete_backup(operation_id):
                 hash_md5.update(chunk)
         
         checksum = hash_md5.hexdigest()
-        with open(archive_path.with_suffix('.tar.gz.md5'), 'w') as f:
+        # FIX: Usa il nome completo con .md5 alla fine invece di with_suffix
+        checksum_path = BACKUP_DIR / f"{archive_path.name}.md5"
+        with open(checksum_path, 'w') as f:
             f.write(f"{checksum}  {archive_path.name}\n")
         
         # Cleanup
@@ -357,72 +375,119 @@ def create_complete_backup(operation_id):
         raise
 
 def create_db_backup(operation_id):
-    """Crea backup solo database"""
+    """Crea backup solo database con checksum"""
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     backup_operations[operation_id]['message'] = 'Backup database...'
-    backup_operations[operation_id]['progress'] = 50
+    backup_operations[operation_id]['progress'] = 30
     
     from core.db_config import CURRENT_DB_PATH
     db_source = Path(CURRENT_DB_PATH)
     db_backup = BACKUP_DIR / f"access_{timestamp}.db"
     
     if db_source.exists():
+        # Copia database
         shutil.copy2(db_source, db_backup)
         
-        # Link latest
-        latest_link = BACKUP_DIR / "latest_database.db"
-        if latest_link.exists():
-            latest_link.unlink()
-        latest_link.symlink_to(db_backup.name)
+        backup_operations[operation_id]['message'] = 'Calcolo checksum...'
+        backup_operations[operation_id]['progress'] = 70
+        
+        # AGGIUNGI CHECKSUM per database
+        import hashlib
+        hash_md5 = hashlib.md5()
+        with open(db_backup, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        
+        checksum = hash_md5.hexdigest()
+        checksum_path = BACKUP_DIR / f"{db_backup.name}.md5"
+        with open(checksum_path, 'w') as f:
+            f.write(f"{checksum}  {db_backup.name}\n")
+        
+        backup_operations[operation_id]['progress'] = 90
+        
+        # Traccia ultimo backup
+        latest_file = BACKUP_DIR / "latest_database.txt"
+        latest_file.write_text(db_backup.name)
+        
+        backup_operations[operation_id]['progress'] = 100
         
         return {
             'filename': db_backup.name,
-            'size': format_size(db_backup.stat().st_size)
+            'size': format_size(db_backup.stat().st_size),
+            'checksum': checksum
         }
     else:
         raise FileNotFoundError("Database non trovato")
 
 @backup_bp.route('/delete/<filename>', methods=['DELETE', 'POST'])  # Aggiungi POST per compatibilità
 def delete_backup(filename):
-    """Elimina un backup"""
+    """Elimina un backup - gestisce anche file mancanti"""
     try:
         logger.info(f"Richiesta eliminazione backup: {filename}")
         
         # Sicurezza: verifica che sia nella directory backup
         file_path = BACKUP_DIR / filename
         
-        # Log dettagliato per debug
-        logger.info(f"Percorso file: {file_path}")
-        logger.info(f"File esiste: {file_path.exists()}")
-        
-        if not file_path.exists():
-            logger.error(f"File non trovato: {file_path}")
-            return jsonify({'success': False, 'error': f'File non trovato: {filename}'})
-        
-        # Verifica sicurezza percorso
+        # Verifica sicurezza percorso PRIMA di controllare esistenza
         try:
-            file_path.resolve().relative_to(BACKUP_DIR.resolve())
-        except ValueError:
-            logger.error(f"Percorso non valido: {file_path}")
+            # Usa il nome del file per validazione, non il percorso completo
+            if ".." in filename or "/" in filename or "\\" in filename:
+                logger.error(f"Nome file non valido: {filename}")
+                return jsonify({'success': False, 'error': 'Nome file non valido'})
+        except Exception as e:
+            logger.error(f"Errore validazione percorso: {e}")
             return jsonify({'success': False, 'error': 'Percorso non valido'})
         
-        # Verifica permessi
-        if not os.access(file_path, os.W_OK):
-            logger.error(f"Permessi insufficienti per eliminare: {file_path}")
-            return jsonify({'success': False, 'error': 'Permessi insufficienti per eliminare il file'})
+        # Contatori per feedback
+        files_deleted = 0
+        files_not_found = []
         
-        # Elimina file principale
-        file_path.unlink()
-        logger.info(f"File eliminato: {file_path}")
+        # Prova a eliminare il file principale
+        if file_path.exists():
+            try:
+                # Verifica permessi
+                if os.access(file_path, os.W_OK):
+                    file_path.unlink()
+                    logger.info(f"File eliminato: {file_path}")
+                    files_deleted += 1
+                else:
+                    logger.error(f"Permessi insufficienti per: {file_path}")
+                    return jsonify({'success': False, 'error': 'Permessi insufficienti per eliminare il file'})
+            except Exception as e:
+                logger.error(f"Errore eliminazione file: {e}")
+                return jsonify({'success': False, 'error': f'Errore eliminazione: {str(e)}'})
+        else:
+            logger.warning(f"File principale non trovato: {file_path}")
+            files_not_found.append(filename)
         
-        # Elimina anche checksum se esiste
-        checksum_file = file_path.with_suffix(file_path.suffix + '.md5')
+        # Prova a eliminare il checksum (sempre, anche se il file principale non c'è)
+        checksum_file = BACKUP_DIR / f"{filename}.md5"
         if checksum_file.exists():
-            checksum_file.unlink()
-            logger.info(f"Checksum eliminato: {checksum_file}")
+            try:
+                checksum_file.unlink()
+                logger.info(f"Checksum eliminato: {checksum_file}")
+                files_deleted += 1
+            except Exception as e:
+                logger.warning(f"Impossibile eliminare checksum: {e}")
         
-        return jsonify({'success': True, 'message': f'Backup {filename} eliminato con successo'})
+        # Determina il messaggio di risposta
+        if files_deleted > 0:
+            # Almeno qualcosa è stato eliminato
+            if files_not_found:
+                message = f'Backup {filename} rimosso dalla lista (file già assente dal filesystem)'
+            else:
+                message = f'Backup {filename} eliminato con successo'
+            return jsonify({'success': True, 'message': message})
+        elif files_not_found:
+            # Niente da eliminare ma rimuovi dalla lista comunque
+            message = f'Backup {filename} già assente - rimosso dalla lista'
+            logger.info(message)
+            # Restituisci success=True così la UI rimuove l'entry
+            return jsonify({'success': True, 'message': message, 'warning': True})
+        else:
+            # Non dovrebbe mai arrivare qui
+            return jsonify({'success': False, 'error': 'Nessuna operazione eseguita'})
         
     except PermissionError as e:
         logger.error(f"Errore permessi eliminazione {filename}: {e}")
@@ -465,8 +530,8 @@ def cleanup_old_backups():
             if week_key in weeks_kept or len(weeks_kept) >= retention['weekly_keep']:
                 freed_space += backup.stat().st_size
                 backup.unlink()
-                # Elimina anche checksum
-                checksum = backup.with_suffix('.tar.gz.md5')
+                # Elimina anche checksum - FIX: usa il nome corretto
+                checksum = BACKUP_DIR / f"{backup.name}.md5"
                 if checksum.exists():
                     checksum.unlink()
                 cleaned.append(backup.name)
@@ -524,6 +589,12 @@ def update_config():
 def update_crontab(config):
     """Aggiorna crontab per backup automatici"""
     try:
+        # Lo script auto_backup.py ora esiste!
+        script_path = "/opt/access_control/scripts/auto_backup.py"
+        if not Path(script_path).exists():
+            logger.warning(f"Script backup non trovato: {script_path}")
+            return False
+        
         cron_entries = []
         
         if config['auto_backup']['enabled']:
@@ -531,8 +602,10 @@ def update_crontab(config):
             if config['auto_backup']['daily']['enabled']:
                 time = config['auto_backup']['daily']['time']
                 hour, minute = time.split(':')
+                backup_type = config['auto_backup']['daily'].get('type', 'database')
+                # Usa lo script Python auto_backup.py
                 cron_entries.append(
-                    f"{minute} {hour} * * * cd /opt/access_control && /usr/bin/python3 scripts/quick_backup.sh"
+                    f"{minute} {hour} * * * cd /opt/access_control && /usr/bin/python3 scripts/auto_backup.py {backup_type} >> logs/auto_backup.log 2>&1"
                 )
             
             # Backup settimanale
@@ -540,8 +613,30 @@ def update_crontab(config):
                 time = config['auto_backup']['weekly']['time']
                 hour, minute = time.split(':')
                 day = config['auto_backup']['weekly']['day']
+                backup_type = config['auto_backup']['weekly'].get('type', 'complete')
                 cron_entries.append(
-                    f"{minute} {hour} * * {day} cd /opt/access_control && /usr/bin/python3 scripts/backup_project.py"
+                    f"{minute} {hour} * * {day} cd /opt/access_control && /usr/bin/python3 scripts/auto_backup.py {backup_type} >> logs/auto_backup.log 2>&1"
+                )
+            
+            # Backup mensile
+            if config['auto_backup']['monthly']['enabled']:
+                time = config['auto_backup']['monthly']['time']
+                hour, minute = time.split(':')
+                day = config['auto_backup']['monthly']['day']
+                backup_type = config['auto_backup']['monthly'].get('type', 'complete')
+                cron_entries.append(
+                    f"{minute} {hour} {day} * * cd /opt/access_control && /usr/bin/python3 scripts/auto_backup.py {backup_type} >> logs/auto_backup.log 2>&1"
+                )
+            
+            # Backup annuale
+            if config['auto_backup']['yearly']['enabled']:
+                time = config['auto_backup']['yearly']['time']
+                hour, minute = time.split(':')
+                month = config['auto_backup']['yearly']['month']
+                day = config['auto_backup']['yearly']['day']
+                backup_type = config['auto_backup']['yearly'].get('type', 'complete')
+                cron_entries.append(
+                    f"{minute} {hour} {day} {month} * cd /opt/access_control && /usr/bin/python3 scripts/auto_backup.py {backup_type} >> logs/auto_backup.log 2>&1"
                 )
         
         # Leggi crontab esistente
@@ -557,42 +652,115 @@ def update_crontab(config):
         # Aggiungi nuove entry
         new_cron_lines.extend(cron_entries)
         
-        # Scrivi nuovo crontab
+        # Scrivi nuovo crontab - IMPORTANTE: deve terminare con newline
         new_cron = '\n'.join(new_cron_lines)
-        process = subprocess.Popen(['crontab', '-'], stdin=subprocess.PIPE)
-        process.communicate(new_cron.encode())
+        if new_cron and not new_cron.endswith('\n'):
+            new_cron += '\n'
+        
+        process = subprocess.Popen(['crontab', '-'], stdin=subprocess.PIPE, text=True)
+        process.communicate(new_cron)
         
         return True
         
     except Exception as e:
         raise
 
+def restore_database_backup(filename, file_path):
+    """Ripristina un backup del database"""
+    try:
+        # Verifica checksum
+        checksum_file = BACKUP_DIR / f"{filename}.md5"
+        if not checksum_file.exists():
+            return jsonify({'success': False, 'error': 'Checksum mancante - ripristino database non consentito'})
+        
+        # Verifica integrità
+        import hashlib
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        
+        actual_checksum = hash_md5.hexdigest()
+        expected_checksum = checksum_file.read_text().split()[0]
+        
+        if actual_checksum != expected_checksum:
+            return jsonify({'success': False, 'error': 'Checksum non valido - database corrotto'})
+        
+        # Backup del database attuale
+        from core.db_config import CURRENT_DB_PATH
+        current_db = Path(CURRENT_DB_PATH)
+        
+        if current_db.exists():
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_name = f"access_before_restore_{timestamp}.db"
+            backup_path = BACKUP_DIR / backup_name
+            shutil.copy2(current_db, backup_path)
+            
+            # Crea checksum per il backup pre-restore
+            hash_md5 = hashlib.md5()
+            with open(backup_path, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_md5.update(chunk)
+            checksum = hash_md5.hexdigest()
+            with open(BACKUP_DIR / f"{backup_name}.md5", 'w') as f:
+                f.write(f"{checksum}  {backup_name}\n")
+        
+        # Ripristina il database
+        shutil.copy2(file_path, current_db)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Database ripristinato da {filename}. Backup precedente salvato come {backup_name if current_db.exists() else "N/A"}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore restore database: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
 @backup_bp.route('/restore/<filename>', methods=['POST'])
 def restore_backup(filename):
-    """Ripristina un backup"""
+    """Ripristina un backup - CON ESTREMA CAUTELA"""
     try:
+        # SICUREZZA: Verifica che il servizio non sia in produzione
+        import socket
+        hostname = socket.gethostname()
+        if 'prod' in hostname.lower():
+            return jsonify({'success': False, 'error': 'ERRORE: Ripristino non consentito in ambiente di produzione'})
+        
         file_path = BACKUP_DIR / filename
+        
+        # Verifica sicurezza path
+        try:
+            file_path.resolve().relative_to(BACKUP_DIR.resolve())
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Percorso non valido'})
         
         if not file_path.exists():
             return jsonify({'success': False, 'error': 'Backup non trovato'})
         
-        if not filename.endswith('.tar.gz'):
-            return jsonify({'success': False, 'error': 'Solo backup completi possono essere ripristinati'})
+        # Gestisci sia backup completi che database
+        if filename.endswith('.db'):
+            # RESTORE DATABASE
+            return restore_database_backup(filename, file_path)
+        elif not filename.endswith('.tar.gz'):
+            return jsonify({'success': False, 'error': 'Formato backup non supportato'})
         
-        # Verifica checksum
-        checksum_file = file_path.with_suffix('.tar.gz.md5')
-        if checksum_file.exists():
-            import hashlib
-            hash_md5 = hashlib.md5()
-            with open(file_path, "rb") as f:
-                for chunk in iter(lambda: f.read(4096), b""):
-                    hash_md5.update(chunk)
-            
-            actual_checksum = hash_md5.hexdigest()
-            expected_checksum = checksum_file.read_text().split()[0]
-            
-            if actual_checksum != expected_checksum:
-                return jsonify({'success': False, 'error': 'Checksum non valido - backup corrotto'})
+        # OBBLIGATORIO: Verifica checksum - FIX: usa il nome corretto
+        checksum_file = BACKUP_DIR / f"{filename}.md5"
+        if not checksum_file.exists():
+            return jsonify({'success': False, 'error': 'Checksum mancante - ripristino non consentito per sicurezza'})
+        
+        import hashlib
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        
+        actual_checksum = hash_md5.hexdigest()
+        expected_checksum = checksum_file.read_text().split()[0]
+        
+        if actual_checksum != expected_checksum:
+            return jsonify({'success': False, 'error': 'Checksum non valido - backup corrotto'})
         
         # Crea backup dell'attuale prima di ripristinare
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -833,7 +1001,8 @@ def perform_integrity_check(operation_id):
         backup_operations[operation_id]['progress'] = int((idx / len(backup_files)) * 100)
         backup_operations[operation_id]['message'] = f'Verifica {backup_file.name}...'
         
-        checksum_file = backup_file.with_suffix('.tar.gz.md5')
+        # FIX: usa il nome corretto per il checksum
+        checksum_file = BACKUP_DIR / f"{backup_file.name}.md5"
         
         if not checksum_file.exists():
             results['missing_checksum'] += 1
@@ -918,8 +1087,8 @@ def perform_retention_cleanup(config):
                 size = file_to_delete.stat().st_size
                 file_to_delete.unlink()
                 
-                # Elimina anche checksum
-                checksum = file_to_delete.with_suffix('.tar.gz.md5')
+                # Elimina anche checksum - FIX: usa il nome corretto
+                checksum = BACKUP_DIR / f"{file_to_delete.name}.md5"
                 if checksum.exists():
                     checksum.unlink()
                 

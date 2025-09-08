@@ -513,6 +513,77 @@ Recupera limiti accesso mensili.
 
 ---
 
+## 💾 Backup & Restore Endpoints
+
+### GET `/api/backup/status`
+Recupera stato generale dei backup e statistiche disco.
+
+**Response:**
+```json
+{
+  "success": true,
+  "backups": [
+    {
+      "name": "backup_completo_20250908_092848.tar.gz",
+      "type": "complete",
+      "size": "8.33 MB",
+      "date": "2025-09-08T09:28:48",
+      "age_days": 0,
+      "has_checksum": true,
+      "can_download": true,
+      "can_restore": true
+    }
+  ],
+  "total_backups": 5,
+  "total_size": "41.66 MB",
+  "last_backup": "2025-09-08T10:04:24",
+  "disk_used_percent": 19.1,
+  "disk_free": "79.2 GB"
+}
+```
+
+### POST `/api/backup/create`
+Crea un nuovo backup del sistema.
+- **Backup completo**: Include codice, database, configurazioni, log
+- **Backup database**: Solo il database SQLite
+
+**Request Body:**
+```json
+{
+  "type": "complete"  // oppure "database"
+}
+```
+
+### DELETE `/api/backup/delete/<filename>`
+Elimina un backup esistente.
+- Gestisce anche file mancanti dal filesystem
+- Elimina automaticamente il checksum .md5 associato
+
+### POST `/api/backup/restore/<filename>`
+Ripristina un backup.
+- Supporta sia backup completi (.tar.gz) che database (.db)
+- Richiede checksum MD5 valido per sicurezza
+- Crea backup automatico prima del ripristino
+
+### GET `/api/backup/download/<filename>`
+Scarica un file di backup.
+
+### POST `/api/backup/config`
+Aggiorna configurazione backup automatici.
+- Salva in `/opt/access_control/backups/backup_config.json`
+- Aggiorna automaticamente il crontab di sistema
+
+### POST `/api/backup/cleanup`
+Esegue pulizia manuale dei backup vecchi secondo policy retention.
+
+### POST `/api/backup/integrity/check`
+Avvia verifica integrità checksum MD5 di tutti i backup.
+
+### POST `/api/backup/retention/apply`
+Applica manualmente le politiche di retention.
+
+---
+
 ## 🔄 System Management Endpoints
 
 ### POST `/api/restart-service`
