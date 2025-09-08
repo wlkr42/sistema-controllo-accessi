@@ -39,8 +39,7 @@ function loadDashboardData() {
                     const status = access.autorizzato ? 
                         '<span class="badge bg-success">Autorizzato</span>' : 
                         '<span class="badge bg-danger">Negato</span>';
-                    // Usa il tempo formattato dal server con timezone configurato
-                    const time = access.time_formatted || new Date(access.timestamp).toLocaleTimeString();
+                    const time = new Date(access.timestamp).toLocaleTimeString();
                     html += `
                         <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                             <div>

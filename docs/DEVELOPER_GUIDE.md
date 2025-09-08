@@ -39,9 +39,26 @@
 └── requirements.txt                # Dipendenze Python
 ```
 
-## 🆕 Funzionalità Recenti (v2.9.1)
+## 🆕 Funzionalità Recenti (v2.9.3)
 
-### Configurazione Email SMTP
+### Fix Sicurezza Password SMTP (v2.9.3)
+- **Problema risolto**: Password SMTP mostrata in chiaro invece di essere mascherata
+- **Implementazione sicura**: Campo password ora mostra pallini (••••••••) quando salvata
+- **Interazione intelligente**: 
+  - Pallini mostrati quando password già configurata
+  - Click sul campo svuota automaticamente per nuova password
+  - Se non modificata, i pallini non vengono inviati al server
+- **File modificati**: 
+  - `src/api/static/js/sistema.js` - Logica gestione password
+  - `src/api/modules/email_config.py` - Fix template JavaScript
+
+### Sistema Monitoraggio Real-Time (v2.9.2)
+- **Metriche Live Dashboard Admin**: Stato sistema, versione, uptime, RAM/CPU
+- **Console Debug Potenziata**: Limite aumentato a 2000 righe per log estesi
+- **Aggiornamento automatico**: Ogni 5 secondi via AJAX con indicatori colorati
+- **Librerie**: Integrazione `psutil` per monitoraggio sistema real-time
+
+### Configurazione Email SMTP Completa (v2.9.1)
 Sistema completo per la gestione invio email:
 
 - **Modulo**: `src/api/modules/email_config.py`
@@ -51,7 +68,15 @@ Sistema completo per la gestione invio email:
   - `POST /api/email/test` - Test invio email
 - **UI**: `/admin/config` → Tab "Email"
 - **Storage**: Tabella `system_settings`, chiavi `email.*`
-- **Sicurezza**: Password mascherata nelle GET, supporto STARTTLS/SSL
+- **Sicurezza**: Password mascherata nelle GET, supporto STARTTLS/SSL, OAuth2
+- **Configurazioni supportate**: SMTP server, porta, sicurezza (STARTTLS/SSL/NONE)
+
+### Sistema Backup & Restore Completo (v2.9.0)
+- **Backup Enterprise**: Schedulazione multi-livello (giornalieri, settimanali, mensili)
+- **Cloud Integration**: AWS S3, Google Cloud, Azure, FTP/SFTP
+- **Verifica Integrità**: Controllo checksum MD5 automatico
+- **Retention Policies**: Cleanup automatico configurabile
+- **Crontab Integration**: Schedulazione automatica da UI
 
 ### Nome Installazione Dinamico nelle Email
 Tutte le email ora usano il nome installazione configurato:
@@ -87,20 +112,75 @@ pip install -r requirements.txt
 -- Tabelle principali
 utenti_autorizzati       -- Utenti con tessera
 log_accessi             -- Log tutti gli accessi
-system_settings         -- Configurazioni sistema
-relay_config           -- Configurazione 8 relè
+system_settings         -- Configurazioni sistema (inclusi email.*, sync.*)
+relay_config           -- Configurazione 8 relè dinamica
 fascie_orarie          -- Orari accesso consentiti
 limiti_accesso_mensili -- Limiti mensili per utente
 utenti_sistema         -- Utenti sistema con profili estesi (v2.7.0+)
 password_reset_tokens  -- Token reset password (v2.7.0+)
 password_history      -- Storico password (v2.7.0+)
+conteggio_ingressi_mensili -- Contatore accessi mensili (v2.8.0+)
+limiti_accesso         -- Limite massimo ingressi mensili (v2.8.0+)
+log_forzature          -- Log concessioni ingressi extra (v2.8.0+)
+```
+
+### System Settings Keys (v2.9.3)
+```sql
+-- Email Configuration
+email.smtp_server      -- Server SMTP
+email.smtp_port        -- Porta SMTP (587, 465, 25)
+email.smtp_security    -- Sicurezza (STARTTLS, SSL, NONE)
+email.username         -- Username SMTP
+email.password         -- Password SMTP (criptata)
+email.mittente         -- Email mittente
+email.nome_mittente    -- Nome mittente
+email.enabled          -- Abilitazione servizio
+
+-- System Configuration
+sistema.nome_installazione  -- Nome installazione dinamico
+sistema.timezone            -- Timezone sistema
+sistema.formato_data        -- Formato data
+sistema.formato_ora         -- Formato ora (12/24)
+
+-- Sync Configuration
+sync.url               -- URL server remoto
+sync.database          -- Nome database
+sync.username          -- Username sync
+sync.password          -- Password sync (criptata)
+sync.comune            -- Filtro comune
+sync.sync_enabled      -- Abilitazione sync automatica
+sync.sync_interval_hours -- Intervallo sincronizzazione
+sync.last_sync         -- Timestamp ultima sync
 ```
 
 ### 3. Variabili Ambiente
 ```bash
 export FLASK_ENV=development
 export FLASK_DEBUG=1
-export DATABASE_PATH=/opt/access_control/data/database.db
+# Database path automatico tramite db_config.py
+# Supporta /opt/access_control/data/access.db (nuovo)
+# Retrocompatibilità con /opt/access_control/src/access.db (vecchio)
+```
+
+### 4. Configurazione Centralizzata Database (v2.9.0+)
+```python
+# File: src/core/db_config.py - Gestione path centralizzata
+from pathlib import Path
+import os
+
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+DB_PATH = str(PROJECT_ROOT / "data" / "access.db")  # Nuovo percorso
+OLD_DB_PATH = str(PROJECT_ROOT / "src" / "access.db")  # Retrocompatibilità
+
+def get_db_path():
+    """Restituisce il percorso corretto del database"""
+    if os.path.exists(DB_PATH):
+        return DB_PATH
+    elif os.path.exists(OLD_DB_PATH):
+        return OLD_DB_PATH
+    return DB_PATH
+
+CURRENT_DB_PATH = get_db_path()
 ```
 
 ## 🕐 Sistema Timezone
@@ -238,13 +318,13 @@ codice_fiscale = controller.read_card()  # Blocking
 controller.disconnect()
 ```
 
-### Test Lettore senza Interferenze (v2.2.0+)
-Il test del lettore ora funziona monitorando il database invece di accedere all'hardware:
+### Test Hardware Migliorato (v2.9.3+)
+Sistema di test hardware completamente rinnovato con monitoraggio database:
 
 ```python
-# hardware_tests.py - test_reader()
-# NON inizializza il lettore hardware
-# Monitora la tabella log_accessi per nuovi inserimenti
+# hardware_tests.py - Architettura migliorata
+# NON inizializza hardware per evitare conflitti
+# Monitora tabella log_accessi per nuovi inserimenti
 cursor.execute("""
     SELECT id, codice_fiscale, autorizzato, motivo_rifiuto, nome_utente 
     FROM log_accessi 
@@ -254,14 +334,16 @@ cursor.execute("""
 ```
 
 **Campi database utilizzati:**
-- `motivo_rifiuto`: Contiene la motivazione del rifiuto
-- `nome_utente`: Nome dell'utente se disponibile
+- `motivo_rifiuto`: "Limite mensile superato", "Utente disattivato", ecc.
+- `nome_utente`: Nome completo dell'utente se disponibile
 - `autorizzato`: Flag booleano per accesso autorizzato/negato
+- **Database path**: Migrato da `/opt/access_control/src/access.db` a `/opt/access_control/data/access.db`
 
-**Funzione Stop Test:**
-- Endpoint: `POST /api/hardware/stop-reader`
-- Funzione: `stop_reader()` in `hardware_tests.py`
-- Interrompe il test senza interferire con il sistema principale
+**Funzioni Test:**
+- Endpoint: `POST /api/hardware/test-reader` - Avvia test monitoraggio
+- Endpoint: `POST /api/hardware/stop-reader` - Ferma test
+- Endpoint: `GET /api/hardware/status?test_id=reader` - Stato test
+- **Nessuna interferenza** con il sistema principale operativo
 
 ### Test Completo Sistema (v2.3.0+)
 Il test integrato ora legge la configurazione relay dal database:
@@ -787,4 +869,105 @@ conn = sqlite3.connect(DB_PATH)
 
 ---
 
-**Ultimo aggiornamento**: 2025-09-06 - Versione 2.6.0
+## 💾 Sistema Email e Notifiche (v2.9.1+)
+
+### Configurazione SMTP
+Il sistema supporta configurazione completa SMTP per invio email:
+
+```python
+# Modulo: src/api/modules/email_config.py
+@email_config_bp.route('/config', methods=['GET', 'POST'])
+@require_auth()
+@require_permission('all')
+def email_config():
+    # Gestisce configurazione SMTP con sicurezza password
+```
+
+**Parametri supportati:**
+- `email.smtp_server`: Server SMTP (Gmail, Outlook, ecc.)
+- `email.smtp_port`: Porta (587 STARTTLS, 465 SSL, 25 plain)
+- `email.smtp_security`: STARTTLS, SSL, NONE
+- `email.username` / `email.password`: Credenziali SMTP
+- `email.mittente` / `email.nome_mittente`: Identità mittente
+- **OAuth2 support**: Per provider che richiedono autenticazione moderna
+
+### Test Email Integrato
+```python
+@email_config_bp.route('/test', methods=['POST'])
+def test_email():
+    # Invia email di test con configurazione salvata
+    # Usa nome installazione dinamico dal database
+```
+
+## 🔄 Sistema Sincronizzazione Server (v2.5.0+)
+
+### Connector Odoo Migliorato
+```python
+# File: src/external/odoo_partner_connector.py
+class OdooPartnerConnector:
+    def connect(self):  # Renamed from authenticate()
+        """Stabilisce connessione con server Odoo"""
+        
+    def sync_citizens(self):
+        """Sincronizza cittadini autorizzati"""
+```
+
+### Stato Connessione Server
+- **Server sync status**: Mostra "connected" se sincronizzato nelle ultime 24 ore
+- **Configurazione database**: Migrata da JSON a `system_settings`
+- **Sync automatica**: Configurabile da 1h a custom via UI
+
+## 🗂️ Gestione Ingressi Aggiuntivi (v2.8.0+)
+
+### Sistema Test Accessi Avanzato
+```python
+# Endpoint: POST /api/configurazione/test/aggiungi-ingressi
+# Concede ingressi extra quando utente raggiunge limite
+def aggiungi_ingressi():
+    # Logic: nuovo_contatore = max(0, limite - ingressi_aggiuntivi)
+    # Se limite=5 e ingressi_extra=+2 → nuovo_contatore=3
+    # L'utente potrà fare altri 2 accessi
+```
+
+### Simulazione Accesso (NO LOG)
+```python
+# Endpoint: POST /api/configurazione/test/simula-accesso
+# Verifica senza modificare contatori o registrare
+def simula_accesso():
+    # Solo verifica, NON incrementa contatori
+    # NON registra nei log_accessi
+```
+
+## 🔐 Password Management Sicuro (v2.9.3)
+
+### Pattern Frontend Password Security
+Il sistema implementa gestione sicura password in tutti i form:
+
+```javascript
+// Pattern standard per campi password
+if (data.config.password === '********') {  // Backend invia asterischi
+    passwordField.value = '••••••••';        // Frontend mostra pallini
+    passwordField.setAttribute('data-saved', 'true');
+    
+    // Pulisci al primo focus
+    passwordField.addEventListener('focus', function() {
+        if (this.value === '••••••••' && this.getAttribute('data-saved') === 'true') {
+            this.value = '';
+            this.removeAttribute('data-saved');
+        }
+    }, { once: true });
+}
+
+// Al salvataggio: non inviare placeholder
+if (passwordValue === '••••••••' && passwordField.getAttribute('data-saved') === 'true') {
+    passwordValue = '';  // Mantieni password esistente
+}
+```
+
+**File implementati:**
+- `src/api/static/js/sistema.js` - Email SMTP password
+- Tutti i form con campi password sensibili
+
+---
+
+**Ultimo aggiornamento**: 2025-09-08 - Versione 2.9.3

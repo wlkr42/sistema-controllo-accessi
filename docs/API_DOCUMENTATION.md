@@ -38,7 +38,7 @@ Restituisce lo stato del sistema con metriche real-time.
   "database_ok": true,
   "uptime": "2h 34m",
   "ram_percent": 63.5,
-  "version": "v2.9.1",
+  "version": "v2.9.3",
   "cpu_percent": 12.3
 }
 ```
@@ -65,6 +65,10 @@ Recupera i log di sistema.
   ]
 }
 ```
+
+**Note v2.9.2+:**
+- Limite aumentato da 100 a 2000 righe per debug esteso
+- Console debug potenziata con più informazioni di sistema
 
 ---
 
@@ -321,10 +325,13 @@ Test invio email con configurazione SMTP.
 }
 ```
 
-**Note v2.9.1+:**
+**Note v2.9.3+:**
 - Il nome installazione nelle email viene preso da `sistema.nome_installazione`
-- La password non viene restituita in chiaro nelle GET
-- Se la password viene inviata come "********" non viene aggiornata
+- La password non viene restituita in chiaro nelle GET (ritorna `'********'`)
+- Il frontend mostra pallini `••••••••` quando password è salvata
+- Se la password viene inviata come `'********'` o `'••••••••'` non viene aggiornata
+- Click sul campo password pulisce automaticamente i pallini per nuova password
+- Supporto completo OAuth2 per provider moderni (Gmail, Outlook, ecc.)
 
 ---
 
@@ -749,47 +756,286 @@ Stato sistema completo.
 
 ---
 
-## 💾 Backup Endpoints
+## 💾 Backup & Restore Endpoints (v2.9.0+)
 
 ### GET `/api/backup/status`
-Stato backup sistema.
+Recupera stato generale dei backup e statistiche disco.
 
 **Response:**
 ```json
 {
   "success": true,
-  "total_backups": 5,
-  "total_size": "250MB",
-  "last_backup": "2025-09-05 03:00:00",
-  "disk_used_percent": 25,
   "backups": [
     {
-      "name": "backup_20250905_030000.db",
+      "name": "backup_completo_20250908_092848.tar.gz",
       "type": "complete",
-      "size": "125MB",
-      "date": "2025-09-05T03:00:00",
-      "age_days": 0
+      "size": "8.33 MB",
+      "date": "2025-09-08T09:28:48",
+      "age_days": 0,
+      "has_checksum": true,
+      "can_download": true,
+      "can_restore": true
+    }
+  ],
+  "total_backups": 5,
+  "total_size": "41.66 MB",
+  "last_backup": "2025-09-08T10:04:24",
+  "disk_used_percent": 19.1,
+  "disk_free": "79.2 GB"
+}
+```
+
+### POST `/api/backup/create`
+Crea un nuovo backup del sistema.
+- **Backup completo**: Include codice, database, configurazioni, log
+- **Backup database**: Solo il database SQLite
+
+**Request Body:**
+```json
+{
+  "type": "complete"  // oppure "database"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "filename": "backup_completo_20250908_123000.tar.gz",
+  "size": "8.33 MB",
+  "checksum": "md5:abc123...",
+  "backup_path": "/opt/access_control/backups/"
+}
+```
+
+### DELETE `/api/backup/delete/<filename>`
+Elimina un backup esistente.
+- Gestisce anche file mancanti dal filesystem
+- Elimina automaticamente il checksum .md5 associato
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Backup eliminato con successo"
+}
+```
+
+### POST `/api/backup/restore/<filename>`
+Ripristina un backup.
+- Supporta sia backup completi (.tar.gz) che database (.db)
+- Richiede checksum MD5 valido per sicurezza
+- Crea backup automatico prima del ripristino
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Backup ripristinato con successo",
+  "restored_files": ["database", "configs", "logs"],
+  "backup_created": "backup_pre_restore_20250908_123456.tar.gz"
+}
+```
+
+### GET `/api/backup/download/<filename>`
+Scarica un file di backup.
+
+**Response:**
+- File attachment con nome corretto
+- Content-Type appropriato (application/gzip, application/octet-stream)
+
+### POST `/api/backup/config`
+Aggiorna configurazione backup automatici.
+- Salva in `/opt/access_control/backups/backup_config.json`
+- Aggiorna automaticamente il crontab di sistema
+
+**Request Body:**
+```json
+{
+  "auto_backup": {
+    "enabled": true,
+    "daily": {
+      "enabled": true,
+      "time": "02:00",
+      "type": "database",
+      "retention_days": 7
+    },
+    "weekly": {
+      "enabled": true,
+      "time": "03:00",
+      "day": "0",
+      "type": "complete",
+      "retention_weeks": 4
+    }
+  },
+  "cloud_sync": {
+    "enabled": true,
+    "provider": "aws_s3",
+    "config": {
+      "access_key": "AKIA...",
+      "secret_key": "...",
+      "bucket": "my-backups",
+      "region": "eu-west-1"
+    }
+  }
+}
+```
+
+### POST `/api/backup/integrity/check`
+Avvia verifica integrità checksum MD5 di tutti i backup.
+
+**Response:**
+```json
+{
+  "success": true,
+  "checked_files": 5,
+  "valid_files": 4,
+  "corrupted_files": 1,
+  "results": [
+    {
+      "filename": "backup_20250908.tar.gz",
+      "status": "valid",
+      "checksum": "abc123..."
     }
   ]
 }
 ```
 
-### POST `/api/backup/create`
-Crea nuovo backup.
-
-**Request Body:**
-```json
-{
-  "type": "complete"  // complete|database
-}
-```
+### POST `/api/backup/retention/apply`
+Applica manualmente le politiche di retention.
 
 **Response:**
 ```json
 {
   "success": true,
-  "filename": "backup_20250905_123000.db",
-  "size": "125MB"
+  "deleted_files": 3,
+  "freed_space": "25.6 MB",
+  "retention_applied": ["daily", "weekly"]
+}
+```
+
+---
+
+## 🔄 Server Sync Endpoints (v2.5.0+)
+
+### GET `/sync/config`
+Recupera configurazione server di sincronizzazione.
+
+**Response:**
+```json
+{
+  "success": true,
+  "config": {
+    "url": "http://odoo.example.com",
+    "database": "production_db",
+    "username": "sync_user",
+    "password": "********",
+    "comune": "Rende",
+    "sync_enabled": true,
+    "sync_interval_hours": 24,
+    "last_sync": "2025-09-08T10:30:00"
+  }
+}
+```
+
+### POST `/sync/config`
+Salva configurazione server di sincronizzazione.
+
+**Request Body:**
+```json
+{
+  "url": "http://odoo.example.com:8069",
+  "database": "production_db",
+  "username": "sync_user",
+  "password": "secure_password",
+  "comune": "Rende",
+  "sync_enabled": true,
+  "sync_interval_hours": 24
+}
+```
+
+### GET `/sync/status`
+Ottiene stato connessione server.
+
+**Response:**
+```json
+{
+  "success": true,
+  "connected": true,
+  "last_sync": "2025-09-08T10:30:00",
+  "next_sync": "2025-09-09T10:30:00",
+  "sync_enabled": true,
+  "records_synchronized": 1250,
+  "connection_test": "success"
+}
+```
+
+**Note:**
+- `connected`: `true` se sincronizzato nelle ultime 24 ore
+- `last_sync`: Timestamp ultima sincronizzazione riuscita
+- `next_sync`: Prossima sincronizzazione schedulata
+
+### POST `/sync/test`
+Testa connessione al server remoto.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Connessione al server riuscita",
+  "server_info": {
+    "version": "15.0",
+    "database": "production_db",
+    "records_available": 1250
+  }
+}
+```
+
+### POST `/sync/manual`
+Avvia sincronizzazione manuale immediata.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Sincronizzazione avviata",
+  "sync_id": "sync_20250908_103045",
+  "estimated_duration": "2-5 minuti"
+}
+```
+
+### POST `/sync/schedule`
+Configura schedulazione automatica.
+
+**Request Body:**
+```json
+{
+  "enabled": true,
+  "interval_hours": 12,
+  "start_time": "02:00"
+}
+```
+
+### GET `/sync/logs`
+Recupera log delle operazioni di sincronizzazione.
+
+**Query Parameters:**
+- `limit` (int): Numero massimo di log (default: 50)
+
+**Response:**
+```json
+{
+  "success": true,
+  "logs": [
+    {
+      "timestamp": "2025-09-08T10:30:00",
+      "type": "manual",
+      "status": "success",
+      "records_synced": 15,
+      "duration": "45 seconds",
+      "message": "Sincronizzazione completata con successo"
+    }
+  ]
 }
 ```
 
@@ -1106,5 +1352,5 @@ Simula un tentativo di accesso SENZA modificare contatori o registrare log.
 
 ---
 
-**API Version**: 2.9.1  
+**API Version**: 2.9.3  
 **Last Updated**: 2025-09-08

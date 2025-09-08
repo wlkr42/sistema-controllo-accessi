@@ -460,9 +460,22 @@ def api_sync_status():
             'sync_interval_hours': config.get('sync_interval_hours', 12)
         }
         
+        # Consider connected if there was a successful sync in the last 24 hours
+        if status['last_sync']:
+            try:
+                from datetime import datetime, timedelta
+                last_sync_time = datetime.fromisoformat(status['last_sync'].replace('Z', '+00:00'))
+                time_since_sync = datetime.now(last_sync_time.tzinfo) - last_sync_time
+                # Connected if synced in last 24 hours
+                status['connected'] = time_since_sync < timedelta(hours=24)
+            except:
+                pass
+        
         if connector:
             conn_status = connector.get_sync_status()
-            status['connected'] = conn_status.get('connected', False)
+            # Use connector status if available and no recent sync
+            if not status['connected']:
+                status['connected'] = conn_status.get('connected', False)
             if conn_status.get('last_sync'):
                 status['last_sync'] = conn_status['last_sync']
         

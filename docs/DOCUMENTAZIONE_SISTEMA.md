@@ -5,11 +5,16 @@
 
 ## 🎯 PANORAMICA
 
-Sistema di controllo accessi per isola ecologica RAEE con:
+Sistema di controllo accessi per isola ecologica RAEE con funzionalità avanzate:
 - Lettore tessere sanitarie CRT-285/288K
 - Controller relè USB-RLY08
 - Web interface su porta 5000
+- **Sistema Backup Enterprise** con cloud integration (v2.9.0+)
+- **Email SMTP completo** con configurazione sicura (v2.9.1+)
+- **Monitoraggio Real-Time** con metriche sistema (v2.9.2+)
+- **Password Security** avanzata (v2.9.3)
 - Integrazione Odoo per sincronizzazione utenti
+- Database path dinamico con retrocompatibilità
 - Sistema robusto con auto-recovery
 
 ---
@@ -204,13 +209,50 @@ systemctl show access-control-web --property=ActiveEnterTimestamp
 
 ## 🔧 MANUTENZIONE
 
-### Backup
-```bash
-# Backup completo
-tar -czf backup_$(date +%Y%m%d).tar.gz /opt/access_control/
+### Backup Sistema (v2.9.0+)
 
-# Backup solo configurazione
-tar -czf config_$(date +%Y%m%d).tar.gz /opt/access_control/config/
+#### Via Web Interface (CONSIGLIATO)
+Accedi a http://192.168.1.236:5000/admin/config → Tab "Backup"
+
+**Funzionalità disponibili:**
+- Backup completi (.tar.gz) - Include tutto il sistema
+- Backup database (.db) - Solo database SQLite
+- Schedulazione automatica (giornaliera, settimanale, mensile)
+- Cloud sync (AWS S3, Google Cloud, Azure, FTP/SFTP)
+- Verifica integrità MD5
+- Retention policies automatiche
+
+#### Via Comando (Manuale)
+```bash
+# Backup completo via API
+curl -X POST http://localhost:5000/api/backup/create \
+  -H "Content-Type: application/json" \
+  -d '{"type":"complete"}'
+
+# Backup database via API  
+curl -X POST http://localhost:5000/api/backup/create \
+  -H "Content-Type: application/json" \
+  -d '{"type":"database"}'
+
+# Backup manuale tradizionale
+tar -czf backup_$(date +%Y%m%d).tar.gz /opt/access_control/
+```
+
+#### Configurazione Cloud Backup
+```bash
+# File: /opt/access_control/backups/backup_config.json
+{
+  "cloud_sync": {
+    "enabled": true,
+    "provider": "aws_s3",
+    "config": {
+      "access_key": "AKIA...",
+      "secret_key": "...",
+      "bucket": "my-backups",
+      "region": "eu-west-1"
+    }
+  }
+}
 ```
 
 ### Aggiornamenti Git
@@ -264,6 +306,86 @@ sudo /opt/access_control/venv/bin/python /opt/access_control/src/api/web_api.py
 - **Dashboard**: http://192.168.1.236:5000
 - **Admin Config**: http://192.168.1.236:5000/admin/config
 - **Test Hardware**: http://192.168.1.236:5000/admin/config#hardware
+- **Sistema Backup**: http://192.168.1.236:5000/admin/config → Tab "Backup"
+- **Email Configuration**: http://192.168.1.236:5000/admin/config → Tab "Email"
+- **Server Sync**: http://192.168.1.236:5000/admin/config → Tab "Server Sync"
+- **Real-Time Monitoring**: http://192.168.1.236:5000/admin/config → Sezione "Stato Sistema"
+
+---
+
+## 🆕 NUOVE FUNZIONALITÀ (v2.9.0 - v2.9.3)
+
+### 💾 Sistema Backup Enterprise (v2.9.0)
+**Accesso**: http://192.168.1.236:5000/admin/config → Tab "Backup"
+
+#### Caratteristiche principali:
+- **Backup schedulati multi-livello**: Giornalieri, settimanali, mensili, annuali
+- **Cloud integration**: AWS S3, Google Cloud, Azure, FTP/SFTP
+- **Verifica integrità**: Controllo checksum MD5 automatico
+- **Retention policies**: Cleanup automatico per spazio disco
+- **UI completa**: Gestione backup da interfaccia web
+
+#### Configurazione rapida:
+1. Accedi al tab "Backup" nelle configurazioni admin
+2. Abilita backup automatici
+3. Configura schedulazione (raccomandato: daily database + weekly complete)
+4. Opzionale: configura cloud sync per backup remoti
+5. Imposta retention (raccomandato: 7 giorni daily, 4 settimane weekly)
+
+### 📧 Sistema Email SMTP Completo (v2.9.1)
+**Accesso**: http://192.168.1.236:5000/admin/config → Tab "Email"
+
+#### Configurazione supportata:
+- **Provider comuni**: Gmail, Outlook, SMTP personalizzati
+- **Sicurezza**: STARTTLS, SSL, OAuth2
+- **Test integrato**: Invio email di test dalla UI
+- **Nome dinamico**: Usa nome installazione nelle email
+
+#### Setup Gmail/Outlook:
+1. Server: smtp.gmail.com / smtp.office365.com
+2. Porta: 587 (STARTTLS) o 465 (SSL)
+3. Username: tuo_email@gmail.com
+4. Password: App Password (non password principale)
+5. Test invio per verificare configurazione
+
+### 📊 Monitoraggio Real-Time (v2.9.2)
+**Accesso**: http://192.168.1.236:5000/admin/config → Sezione "Stato Sistema"
+
+#### Metriche live:
+- **Stato sistema**: Online/Offline con indicatore colorato
+- **Uptime**: Tempo di attività formattato automaticamente
+- **RAM**: Percentuale utilizzo con colori (blu<60%, giallo 60-80%, rosso>80%)
+- **CPU**: Percentuale utilizzo real-time
+- **Versione**: Sistema sempre aggiornato
+- **Console debug**: 2000 righe log per troubleshooting avanzato
+
+### 🔐 Password Security Avanzata (v2.9.3)
+Implementato in tutti i form con campi password:
+
+#### Caratteristiche:
+- **Visualizzazione sicura**: Password salvate mostrate come pallini (••••••••)
+- **Interazione intelligente**: Click su campo pulisce automaticamente per nuova password
+- **Backend sicuro**: Mai password in chiaro nelle risposte API
+- **UX migliorata**: Chiara distinzione tra campo vuoto e password salvata
+
+### 🗃️ Database Path Dinamico (v2.6.0)
+Sistema migrato con compatibilità completa:
+
+#### Percorsi supportati:
+- **Nuovo**: `/opt/access_control/data/access.db` (raccomandato)
+- **Vecchio**: `/opt/access_control/src/access.db` (retrocompatibilità)
+- **Rilevamento automatico**: Sistema sceglie il path corretto
+
+### 🔄 Sincronizzazione Server Avanzata (v2.5.0)
+**Accesso**: http://192.168.1.236:5000/admin/config → Tab "Server Sync"
+
+#### Miglioramenti:
+- **Configurazione database**: Storage sicuro in system_settings
+- **Status intelligente**: "Connected" se sincronizzato < 24h
+- **Sync programmata**: Configurabile da 1h a intervalli custom
+- **OdooPartnerConnector**: Metodo `connect()` (rinominato da `authenticate()`)
+
+---
 
 ---
 
@@ -280,4 +402,11 @@ sudo /opt/access_control/venv/bin/python /opt/access_control/src/api/web_api.py
 ## 📞 SUPPORTO
 
 Repository: https://github.com/wlkr42/sistema-controllo-accessi
-Ultimo aggiornamento: 04/09/2025
+**Ultimo aggiornamento: 08/09/2025 - Versione 2.9.3**
+
+**Principali novità v2.9.3:**
+- Password SMTP security fix completa
+- Monitoraggio sistema real-time
+- Backup enterprise con cloud integration
+- Email SMTP configuration completa
+- Database path dinamico con retrocompatibilità

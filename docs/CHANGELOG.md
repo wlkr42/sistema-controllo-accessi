@@ -25,6 +25,8 @@
 - Aggiunto attributo `data-saved` per tracciare stato password salvata
 - Event listener `focus` con `once: true` per pulizia automatica campo
 - Controllo invio: non invia '••••••••' se password non modificata
+- **Pattern Security**: Implementato standard per tutti i form con password sensibili
+- **UX migliorata**: Chiara distinzione visiva tra password salvata e campo vuoto
 
 ## [2.9.2] - 2025-09-08
 
@@ -79,11 +81,45 @@
 
 ## [2.9.0] - 2025-09-07
 
-### 💾 Sistema Backup & Restore
-- Backup schedulati con verifica integrità MD5
-- Restore con validazione checksum
-- Schedulazione crontab configurabile da UI
-- Backup automatici configurabili
+### 💾 Sistema Backup & Restore Completo
+
+#### 🔄 Schedulazione Multi-livello
+- **Backup Giornalieri**: Database o completi, retention configurabile
+- **Backup Settimanali**: Sistema completo con retention settimanale
+- **Backup Mensili**: Archive completi con retention mensile
+- **Backup Annuali**: Archive storici per compliance
+- **Configurazione UI**: Ogni livello configurabile indipendentemente
+
+#### ☁️ Cloud Integration
+- **Provider supportati**: AWS S3, Google Cloud Storage, Azure Blob, FTP/SFTP
+- **Sync automatica**: Upload post-backup configurabile
+- **Credenziali sicure**: Storage criptato in system_settings
+- **Upload incrementale**: Solo file modificati
+
+#### 🔒 Verifica Integrità
+- **Checksum MD5**: Generato per ogni backup
+- **Verifica automatica**: Schedulata o manuale
+- **Report integrità**: Dashboard con stato backup corrotti
+- **Alert automatici**: Notifiche per backup non validi
+
+#### 📋 Retention Policies
+- **Cleanup automatico**: Basato su età e spazio disco
+- **Retention differenziata**: Diversa per tipo backup
+- **Limite spazio**: Prevenzione esaurimento disco
+- **Applicazione smart**: Mantiene backup critici
+
+#### 🛠️ Implementazione Tecnica
+- **Modulo**: `src/api/backup_module.py` con Flask Blueprint
+- **Configurazione**: `/opt/access_control/backups/backup_config.json`
+- **Crontab integration**: Aggiornamento automatico schedule
+- **File inclusi**: Database, config, logs, codice sorgente
+- **Formati supportati**: .tar.gz (completo), .db (database)
+
+#### 🖥️ Interfaccia UI
+- **Dashboard backup**: `/admin/config` → tab "Backup"
+- **Schede separate**: Per ogni tipo schedulazione
+- **Configurazione cloud**: UI per provider
+- **Monitoraggio**: Stato real-time e statistiche disco
 
 ## [2.8.1] - 2025-09-07
 
@@ -125,11 +161,13 @@
   - Database migrato da `/src/access.db` a `/data/access.db`
   - Separazione completa tra codice sorgente e dati
   - Struttura directory più pulita e professionale
+  - **Retrocompatibilità**: Sistema rileva automaticamente il percorso corretto
 
 - **Configurazione Centralizzata**:
-  - Nuovo file `src/core/db_config.py` per gestione path
-  - Supporto retrocompatibilità con vecchio percorso
+  - Nuovo file `src/core/db_config.py` per gestione path centralizzata
+  - Funzione `get_db_path()` con logic di rilevamento automatico
   - Import unificato in tutti i moduli (20+ file aggiornati)
+  - Supporto path dinamico per sviluppo e produzione
 
 ### 🔧 Miglioramenti Tecnici
 - Aggiornati tutti i moduli per usare configurazione centralizzata DB

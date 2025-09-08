@@ -2810,8 +2810,8 @@ def configure_odoo_connector():
         odoo_connector.username = odoo_config['username']
         odoo_connector.password = odoo_config['password']
         
-        # Cerca di autenticarsi
-        if odoo_connector.authenticate():
+        # Cerca di connettersi
+        if odoo_connector.connect():
             logger.info("✅ Connessione Odoo stabilita")
             # Avvia sync automatico in thread
             start_odoo_sync(odoo_config['sync_interval_hours'])
