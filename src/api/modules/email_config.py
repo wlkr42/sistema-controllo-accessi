@@ -99,6 +99,7 @@ def get_email_config():
 def save_email_config():
     """Salva configurazione email"""
     data = request.get_json()
+    logger.info(f"Ricevuti dati email config: {data}")
     
     conn = get_db_connection()
     if not conn:
@@ -120,24 +121,41 @@ def save_email_config():
             'test_recipient': 'email.test_recipient'
         }
         
+        updates_count = 0
         for field, db_key in config_map.items():
             if field in data:
-                value = data[field]
+                value = str(data[field]) if data[field] is not None else ''
                 # Non aggiornare password se è mascherata
                 if field == 'password' and value == '********':
+                    logger.info(f"Skipping password update (masked)")
                     continue
-                    
-                cursor.execute("""
-                    UPDATE system_settings 
-                    SET value = ? 
-                    WHERE key = ?
-                """, (value, db_key))
+                
+                # Prima verifica se la chiave esiste, altrimenti inserisci
+                cursor.execute("SELECT value FROM system_settings WHERE key = ?", (db_key,))
+                exists = cursor.fetchone()
+                
+                if exists:
+                    cursor.execute("""
+                        UPDATE system_settings 
+                        SET value = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE key = ?
+                    """, (value, db_key))
+                    logger.info(f"Updated {db_key} = {value if field != 'password' else '***'}")
+                else:
+                    cursor.execute("""
+                        INSERT INTO system_settings (key, value)
+                        VALUES (?, ?)
+                    """, (db_key, value))
+                    logger.info(f"Inserted {db_key} = {value if field != 'password' else '***'}")
+                
+                updates_count += 1
         
         conn.commit()
+        logger.info(f"Salvate {updates_count} configurazioni email")
         
         return jsonify({
             'success': True,
-            'message': 'Configurazione email salvata'
+            'message': f'Configurazione email salvata ({updates_count} campi aggiornati)'
         })
         
     except Exception as e:
@@ -165,7 +183,7 @@ def test_email():
         cursor = conn.cursor()
         cursor.execute("""
             SELECT key, value FROM system_settings 
-            WHERE key LIKE 'email.%'
+            WHERE key LIKE 'email.%' OR key = 'sistema.nome_installazione'
         """)
         
         config = dict(cursor.fetchall())
@@ -174,15 +192,18 @@ def test_email():
         if not config.get('email.smtp_server'):
             return jsonify({'success': False, 'error': 'Server SMTP non configurato'}), 400
         
+        # Recupera il nome installazione o usa default
+        nome_installazione = config.get('sistema.nome_installazione', 'Sistema Controllo Accessi')
+        
         # Prepara email di test
-        msg = MIMEText("""
+        msg = MIMEText(f"""
         Questa è un'email di test dal Sistema Controllo Accessi.
         
         Se ricevi questa email, la configurazione SMTP è corretta!
         
         ---
         Sistema Controllo Accessi
-        Isola Ecologica RAEE - Rende
+        {nome_installazione}
         """)
         
         msg['Subject'] = 'Test Email - Sistema Controllo Accessi'

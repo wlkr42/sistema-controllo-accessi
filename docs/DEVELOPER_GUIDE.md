@@ -39,13 +39,31 @@
 └── requirements.txt                # Dipendenze Python
 ```
 
-## 🆕 Funzionalità Recenti (v2.8.1)
+## 🆕 Funzionalità Recenti (v2.9.1)
 
-### Nome Installazione Dinamico
-Il sistema ora supporta la personalizzazione del nome dell'installazione visualizzato nella navbar:
+### Configurazione Email SMTP
+Sistema completo per la gestione invio email:
+
+- **Modulo**: `src/api/modules/email_config.py`
+- **Endpoints**: 
+  - `GET /api/email/config` - Recupera configurazione
+  - `POST /api/email/config` - Salva configurazione
+  - `POST /api/email/test` - Test invio email
+- **UI**: `/admin/config` → Tab "Email"
+- **Storage**: Tabella `system_settings`, chiavi `email.*`
+- **Sicurezza**: Password mascherata nelle GET, supporto STARTTLS/SSL
+
+### Nome Installazione Dinamico nelle Email
+Tutte le email ora usano il nome installazione configurato:
 
 - **Configurazione**: `/admin/config` → Tab "Sistema" → Campo "Nome Installazione"
 - **Storage**: Tabella `system_settings`, chiave `sistema.nome_installazione`
+- **Applicato a**: Email test, reset password, notifiche admin
+- **Default**: "Sistema Controllo Accessi" se non configurato
+
+## 🆕 Funzionalità v2.8.1
+
+### Nome Installazione nella Navbar
 - **Visualizzazione**: Navbar in alto a destra, prima del nome utente
 - **Default**: "Terminale" se non configurato
 

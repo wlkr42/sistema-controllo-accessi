@@ -876,6 +876,14 @@ ADMIN_CONFIG_TEMPLATE = """
                                             <option value="465">465 (SMTP SSL)</option>
                                         </select>
                                     </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Username SMTP</label>
+                                        <input type="text" class="form-control" id="smtp-username" placeholder="username@gmail.com">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Password SMTP</label>
+                                        <input type="password" class="form-control" id="smtp-password" placeholder="Password">
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
@@ -883,23 +891,29 @@ ADMIN_CONFIG_TEMPLATE = """
                                         <input type="email" class="form-control" id="email-mittente" placeholder="isola@comune.rende.cs.it">
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">
-                                            <input type="checkbox" id="report-automatici"> Report Automatici
-                                        </label>
+                                        <label class="form-label">Sicurezza</label>
+                                        <select class="form-select" id="smtp-security">
+                                            <option value="STARTTLS" selected>STARTTLS (Consigliato)</option>
+                                            <option value="SSL">SSL/TLS</option>
+                                            <option value="NONE">Nessuna</option>
+                                        </select>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Frequenza Report</label>
-                                        <select class="form-select" id="frequenza-report">
-                                            <option value="daily">Giornaliero</option>
-                                            <option value="weekly" selected>Settimanale</option>
-                                            <option value="monthly">Mensile</option>
-                                        </select>
+                                        <label class="form-label">
+                                            <input type="checkbox" id="report-automatici"> Abilita invio email
+                                        </label>
                                     </div>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-save"></i> Salva Configurazioni Email
-                            </button>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Salva Configurazioni
+                                </button>
+                                <button type="button" class="btn btn-info" onclick="testEmailSMTP()">
+                                    <i class="fas fa-paper-plane"></i> Test Email
+                                </button>
+                            </div>
+                            <div id="email-status" class="mt-3"></div>
                         </form>
                     </div>
                 </div>

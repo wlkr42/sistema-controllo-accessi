@@ -199,6 +199,77 @@ Recupera ora corrente del server.
 
 ---
 
+## 📧 Email Configuration Endpoints
+
+### GET `/api/email/config`
+Recupera configurazione SMTP per invio email.
+
+**Response:**
+```json
+{
+  "success": true,
+  "config": {
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": "587",
+    "smtp_security": "STARTTLS",
+    "username": "user@gmail.com",
+    "password": "********",  // Mascherata per sicurezza
+    "mittente": "noreply@sistema.local",
+    "nome_mittente": "Sistema Controllo Accessi",
+    "enabled": "1"
+  }
+}
+```
+
+### POST `/api/email/config`
+Salva configurazione SMTP.
+
+**Request Body:**
+```json
+{
+  "smtp_server": "smtp.gmail.com",
+  "smtp_port": "587",
+  "smtp_security": "STARTTLS",  // STARTTLS, SSL, NONE
+  "username": "user@gmail.com",
+  "password": "password123",
+  "mittente": "noreply@sistema.local",
+  "enabled": "1"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Configurazione email salvata (7 campi aggiornati)"
+}
+```
+
+### POST `/api/email/test`
+Test invio email con configurazione SMTP.
+
+**Request Body:**
+```json
+{
+  "email": "destinatario@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Email di test inviata a destinatario@example.com"
+}
+```
+
+**Note v2.9.1+:**
+- Il nome installazione nelle email viene preso da `sistema.nome_installazione`
+- La password non viene restituita in chiaro nelle GET
+- Se la password viene inviata come "********" non viene aggiornata
+
+---
+
 ## 🚦 Access Control Endpoints
 
 ### POST `/api/process-codice-fiscale`
@@ -977,5 +1048,5 @@ Simula un tentativo di accesso SENZA modificare contatori o registrare log.
 
 ---
 
-**API Version**: 2.8.0  
-**Last Updated**: 2025-09-06
+**API Version**: 2.9.1  
+**Last Updated**: 2025-09-08

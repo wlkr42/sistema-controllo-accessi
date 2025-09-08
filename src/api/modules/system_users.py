@@ -387,8 +387,11 @@ def api_send_reset_link():
         reset_url = f"http://192.168.1.236:5000/reset-password?token={token}"
         
         # Recupera configurazione SMTP
-        cursor.execute("SELECT key, value FROM system_settings WHERE key LIKE 'email.%'")
+        cursor.execute("SELECT key, value FROM system_settings WHERE key LIKE 'email.%' OR key = 'sistema.nome_installazione'")
         email_config = dict(cursor.fetchall())
+        
+        # Recupera il nome installazione o usa default
+        nome_installazione = email_config.get('sistema.nome_installazione', 'Sistema Controllo Accessi')
         
         if email_config.get('email.smtp_server') and email_config.get('email.enabled') == '1':
             # Invia email reale
@@ -424,7 +427,7 @@ def api_send_reset_link():
                         <p><strong>Il link scade tra 24 ore.</strong></p>
                         <hr style="margin: 20px 0;">
                         <p style="color: #666; font-size: 12px;">
-                            Sistema Controllo Accessi - Isola Ecologica RAEE<br>
+                            Sistema Controllo Accessi - {nome_installazione}<br>
                             Inviato da: {session.get('username')} (Amministratore)
                         </p>
                     </div>

@@ -1,8 +1,21 @@
-# Sistema Controllo Accessi - v2.7.1
+# Sistema Controllo Accessi - v2.9.1
 
 Sistema completo per il controllo degli accessi tramite tessera sanitaria con gestione hardware, interfaccia web e funzionalità avanzate.
 
-## ✨ Ultime Novità (v2.7.1)
+## ✨ Ultime Novità (v2.9.1)
+
+- 📧 **Configurazione Email SMTP**: Sistema completo per invio email con test integrato
+- 🏷️ **Nome Installazione Dinamico**: Tutte le email usano il nome configurato in sistema
+- 🔧 **Bug Fix Email**: Risolti problemi salvataggio configurazione SMTP
+- 📚 **Documentazione Aggiornata**: API documentation completa per modulo email
+
+## ✨ Novità v2.9.0 
+
+- 💾 **Sistema Backup & Restore Completo**: Backup schedulati con verifica integrità
+- 🔐 **Checksum MD5**: Verifica automatica integrità backup
+- 📅 **Backup Automatici**: Schedulazione crontab configurabile da UI
+
+## ✨ Novità v2.7.1
 
 - 🎨 **UI Dashboard Migliorata**: Rimosso pulsante Test Accessi ridondante
 - 🎨 **Colori Uniformati**: Tutti i pulsanti dashboard ora con schema colori coerente

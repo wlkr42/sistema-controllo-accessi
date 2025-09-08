@@ -290,7 +290,7 @@ def send_reset_email(email, username, token):
         cursor = conn.cursor()
         cursor.execute("""
             SELECT key, value FROM system_settings 
-            WHERE key LIKE 'email.%'
+            WHERE key LIKE 'email.%' OR key = 'sistema.nome_installazione'
         """)
         
         email_config = dict(cursor.fetchall())
@@ -299,6 +299,9 @@ def send_reset_email(email, username, token):
         if not email_config.get('email.smtp_server'):
             logger.warning("Server SMTP non configurato")
             return False
+        
+        # Recupera il nome installazione o usa default
+        nome_installazione = email_config.get('sistema.nome_installazione', 'Sistema Controllo Accessi')
         
         # Prepara email
         reset_url = f"http://192.168.1.236:5000/reset-password?token={token}"
@@ -332,7 +335,7 @@ def send_reset_email(email, username, token):
                     <p>Se non hai richiesto il reset, ignora questa email.</p>
                     <hr style="margin: 20px 0;">
                     <p style="color: #666; font-size: 12px;">
-                        Sistema Controllo Accessi - Isola Ecologica RAEE
+                        Sistema Controllo Accessi - {nome_installazione}
                     </p>
                 </div>
             </body>

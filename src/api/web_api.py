@@ -57,6 +57,7 @@ from api.modules.configurazione_accessi import configurazione_accessi_bp, verifi
 from api.backup_module import backup_bp
 from api.modules.sync_module import sync_bp
 from api.modules.password_management import password_management_bp
+from api.modules.email_config import email_config_bp
 
 # Definizione dei tipi personalizzati
 FlaskResponse = Union[Response, str, Tuple[Union[Dict[str, Any], str], int]]
@@ -156,6 +157,7 @@ app.register_blueprint(configurazione_accessi_bp)
 app.register_blueprint(backup_bp)
 app.register_blueprint(sync_bp, url_prefix='/sync')
 app.register_blueprint(password_management_bp)
+app.register_blueprint(email_config_bp)
 
 # ===============================
 # ROUTES PRINCIPALI

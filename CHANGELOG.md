@@ -1,5 +1,38 @@
 # 📝 CHANGELOG - Sistema Controllo Accessi
 
+## [2.9.1] - 2025-09-08
+
+### ✨ Nuove Funzionalità
+- **Configurazione Email SMTP Completa**
+  - Nuovo modulo `email_config.py` per gestione centralizzata SMTP
+  - Endpoint `/api/email/config` per GET/POST configurazioni
+  - Test invio email con endpoint `/api/email/test`
+  - UI integrata in Admin/Config con tab Email dedicato
+
+### 🔧 Miglioramenti
+- **Email con Nome Installazione Dinamico**
+  - Rimosso testo hardcoded "Isola Ecologica RAEE - Rende"
+  - Tutte le email usano ora `sistema.nome_installazione` dal database
+  - Applicato a: email test, reset password, notifiche admin
+
+- **Frontend Email Configuration**
+  - Form completo con tutti i campi SMTP necessari
+  - Supporto STARTTLS, SSL, autenticazione
+  - Feedback visivo per salvataggio e test
+  - Password mascherata per sicurezza
+
+### 🐛 Bug Fix
+- **Risolto problema salvataggio configurazione email**
+  - Aggiunto blueprint `email_config_bp` mancante
+  - Creata tabella `system_settings` se non esistente
+  - Migliorata gestione sessioni con `credentials: 'include'`
+  - Aggiunto controllo esistenza form prima del binding eventi
+
+### 📚 Documentazione
+- Aggiornati endpoint API email in `API_DOCUMENTATION.md`
+- Documentate nuove funzionalità configurazione SMTP
+- Aggiornata versione API a 2.9.1
+
 ## [2.9.0] - 2025-09-08
 
 ### ✨ Nuove Funzionalità

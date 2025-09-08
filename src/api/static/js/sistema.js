@@ -6,15 +6,55 @@
 // Variabili globali
 let configData = {};
 
+// Funzione showToast di fallback se non esiste
+if (typeof showToast === 'undefined') {
+    window.showToast = function(message, type) {
+        // Trova o crea un div per i messaggi
+        let statusDiv = document.getElementById('email-status') || 
+                       document.getElementById('status-message') ||
+                       document.querySelector('.alert-container');
+        
+        if (!statusDiv) {
+            statusDiv = document.createElement('div');
+            statusDiv.id = 'status-message';
+            statusDiv.style.position = 'fixed';
+            statusDiv.style.top = '20px';
+            statusDiv.style.right = '20px';
+            statusDiv.style.zIndex = '9999';
+            document.body.appendChild(statusDiv);
+        }
+        
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        statusDiv.innerHTML = `<div class="alert ${alertClass}" style="min-width: 300px;">${message}</div>`;
+        
+        // Rimuovi dopo 3 secondi
+        setTimeout(() => {
+            statusDiv.innerHTML = '';
+        }, 3000);
+        
+        console.log(`[${type.toUpperCase()}] ${message}`);
+    };
+}
+
 // Inizializza al caricamento della pagina
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemConfig();
     
-    // Event listeners per i form
-    document.getElementById('sistema-form').addEventListener('submit', saveSistemaConfig);
-    document.getElementById('hardware-form').addEventListener('submit', saveHardwareConfig);
-    document.getElementById('sicurezza-form').addEventListener('submit', saveSicurezzaConfig);
-    document.getElementById('email-form').addEventListener('submit', saveEmailConfig);
+    // Event listeners per i form - con controllo esistenza
+    const sistemaForm = document.getElementById('sistema-form');
+    const hardwareForm = document.getElementById('hardware-form');
+    const sicurezzaForm = document.getElementById('sicurezza-form');
+    const emailForm = document.getElementById('email-form');
+    
+    if (sistemaForm) sistemaForm.addEventListener('submit', saveSistemaConfig);
+    if (hardwareForm) hardwareForm.addEventListener('submit', saveHardwareConfig);
+    if (sicurezzaForm) sicurezzaForm.addEventListener('submit', saveSicurezzaConfig);
+    if (emailForm) {
+        emailForm.addEventListener('submit', saveEmailConfig);
+        console.log('Email form listener aggiunto');
+    } else {
+        console.warn('Email form non trovato');
+    }
 });
 
 // Carica configurazioni dal server
@@ -62,14 +102,8 @@ function populateSystemForms(config) {
         document.getElementById('log-audit').checked = config.sicurezza.log_audit_abilitato !== false;
     }
     
-    // Email
-    if (config.email) {
-        document.getElementById('smtp-server').value = config.email.smtp_server || '';
-        document.getElementById('smtp-porta').value = config.email.smtp_porta || 587;
-        document.getElementById('email-mittente').value = config.email.mittente || '';
-        document.getElementById('report-automatici').checked = config.email.report_automatici || false;
-        document.getElementById('frequenza-report').value = config.email.frequenza_report || 'weekly';
-    }
+    // Email - Carica da endpoint dedicato
+    loadEmailConfig();
 }
 
 // Salva configurazioni Sistema
@@ -156,21 +190,100 @@ function saveSicurezzaConfig(e) {
     saveConfiguration(config, 'sicurezza');
 }
 
+// Carica configurazione email
+async function loadEmailConfig() {
+    try {
+        const response = await fetch('/api/email/config');
+        const data = await response.json();
+        
+        if (data.success && data.config) {
+            document.getElementById('smtp-server').value = data.config.smtp_server || '';
+            document.getElementById('smtp-porta').value = data.config.smtp_port || '587';
+            document.getElementById('smtp-security').value = data.config.smtp_security || 'STARTTLS';
+            document.getElementById('smtp-username').value = data.config.username || '';
+            // Non mostriamo la password per sicurezza
+            if (data.config.password && data.config.password === '********') {
+                document.getElementById('smtp-password').placeholder = 'Password salvata';
+            }
+            document.getElementById('email-mittente').value = data.config.mittente || '';
+            document.getElementById('report-automatici').checked = data.config.enabled === '1';
+        }
+    } catch (error) {
+        console.error('Errore caricamento config email:', error);
+    }
+}
+
+// Test invio email SMTP
+async function testEmailSMTP() {
+    const email = prompt('Inserisci email destinatario per il test:');
+    if (!email) return;
+    
+    try {
+        const response = await fetch('/api/email/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email: email})
+        });
+        
+        const data = await response.json();
+        
+        const statusDiv = document.getElementById('email-status');
+        if (data.success) {
+            statusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+        } else {
+            statusDiv.innerHTML = `<div class="alert alert-danger">Errore: ${data.error}</div>`;
+        }
+    } catch (error) {
+        document.getElementById('email-status').innerHTML = 
+            '<div class="alert alert-danger">Errore di connessione</div>';
+    }
+}
+
 // Salva configurazioni Email
 function saveEmailConfig(e) {
     e.preventDefault();
+    console.log('saveEmailConfig chiamata');
     
-    const config = {
-        email: {
-            smtp_server: document.getElementById('smtp-server').value,
-            smtp_porta: parseInt(document.getElementById('smtp-porta').value),
-            mittente: document.getElementById('email-mittente').value,
-            report_automatici: document.getElementById('report-automatici').checked,
-            frequenza_report: document.getElementById('frequenza-report').value
-        }
+    // Prepara i dati per l'API email_config
+    const emailData = {
+        smtp_server: document.getElementById('smtp-server').value,
+        smtp_port: document.getElementById('smtp-porta').value,
+        mittente: document.getElementById('email-mittente').value,
+        smtp_security: document.getElementById('smtp-security').value,
+        username: document.getElementById('smtp-username').value,
+        password: document.getElementById('smtp-password').value,
+        enabled: document.getElementById('report-automatici').checked ? '1' : '0'
     };
     
-    saveConfiguration(config, 'email');
+    console.log('Dati da inviare:', emailData);
+    
+    // Usa l'endpoint specifico per email
+    fetch('/api/email/config', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailData),
+        credentials: 'include'  // Importante per mantenere la sessione
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+            showToast('Configurazioni email salvate con successo!', 'success');
+            // Ricarica i dati per conferma
+            loadEmailConfig();
+        } else {
+            showToast('Errore: ' + (data.error || 'Errore salvataggio'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Errore fetch:', error);
+        showToast('Errore di connessione', 'error');
+    });
 }
 
 // Funzione generica per salvare configurazioni
