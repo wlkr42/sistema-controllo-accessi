@@ -305,12 +305,15 @@ def create_complete_backup(operation_id):
         
         temp_dir.mkdir(exist_ok=True)
         
-        # Copia componenti
+        # Copia componenti - TUTTE LE CARTELLE IMPORTANTI
         components = [
-            ("src", "Codice sorgente", 30),
-            ("config", "Configurazioni", 20),
+            ("src", "Codice sorgente", 15),
+            ("data", "Database e dati", 15),
+            ("config", "Configurazioni", 10),
             ("scripts", "Scripts", 10),
-            ("docs", "Documentazione", 10)
+            ("docs", "Documentazione", 10),
+            ("logs", "Log di sistema", 5),
+            ("tests", "Test suite", 5)
         ]
         
         for comp_name, desc, progress in components:
@@ -322,8 +325,42 @@ def create_complete_backup(operation_id):
                 if source.is_file():
                     shutil.copy2(source, temp_dir / comp_name)
                 else:
+                    # Ignora file temporanei ma mantieni i log importanti
+                    ignore_patterns = ['*.pyc', '__pycache__', '*.pid', '*.sock']
+                    if comp_name == 'logs':
+                        # Per i log, mantieni tutto tranne i file troppo grandi
+                        ignore_patterns = ['*.pyc', '__pycache__']
                     shutil.copytree(source, temp_dir / comp_name, 
-                                  ignore=shutil.ignore_patterns('*.pyc', '__pycache__', '*.log'))
+                                  ignore=shutil.ignore_patterns(*ignore_patterns))
+        
+        # Copia file importanti nella root
+        backup_operations[operation_id]['message'] = 'Backup file di configurazione root...'
+        backup_operations[operation_id]['progress'] += 10
+        
+        # File singoli importanti nella root
+        root_files = [
+            'requirements.txt',
+            'README.md',
+            'CHANGELOG.md',
+            '.env',
+            'setup.py',
+            'manage.py'
+        ]
+        
+        for file_name in root_files:
+            file_path = PROJECT_ROOT / file_name
+            if file_path.exists():
+                shutil.copy2(file_path, temp_dir / file_name)
+        
+        # Copia tutti gli script .sh nella root
+        for sh_file in PROJECT_ROOT.glob('*.sh'):
+            if sh_file.is_file():
+                shutil.copy2(sh_file, temp_dir / sh_file.name)
+        
+        # Copia tutti i file .py nella root (se esistono)
+        for py_file in PROJECT_ROOT.glob('*.py'):
+            if py_file.is_file():
+                shutil.copy2(py_file, temp_dir / py_file.name)
         
         # Database (se non troppo grande)
         from core.db_config import CURRENT_DB_PATH
