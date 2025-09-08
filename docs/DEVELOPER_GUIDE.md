@@ -39,26 +39,9 @@
 └── requirements.txt                # Dipendenze Python
 ```
 
-## 🆕 Funzionalità Recenti (v2.9.3)
+## 🆕 Funzionalità Recenti (v2.9.1)
 
-### Fix Sicurezza Password SMTP (v2.9.3)
-- **Problema risolto**: Password SMTP mostrata in chiaro invece di essere mascherata
-- **Implementazione sicura**: Campo password ora mostra pallini (••••••••) quando salvata
-- **Interazione intelligente**: 
-  - Pallini mostrati quando password già configurata
-  - Click sul campo svuota automaticamente per nuova password
-  - Se non modificata, i pallini non vengono inviati al server
-- **File modificati**: 
-  - `src/api/static/js/sistema.js` - Logica gestione password
-  - `src/api/modules/email_config.py` - Fix template JavaScript
-
-### Sistema Monitoraggio Real-Time (v2.9.2)
-- **Metriche Live Dashboard Admin**: Stato sistema, versione, uptime, RAM/CPU
-- **Console Debug Potenziata**: Limite aumentato a 2000 righe per log estesi
-- **Aggiornamento automatico**: Ogni 5 secondi via AJAX con indicatori colorati
-- **Librerie**: Integrazione `psutil` per monitoraggio sistema real-time
-
-### Configurazione Email SMTP Completa (v2.9.1)
+### Configurazione Email SMTP
 Sistema completo per la gestione invio email:
 
 - **Modulo**: `src/api/modules/email_config.py`
@@ -68,15 +51,7 @@ Sistema completo per la gestione invio email:
   - `POST /api/email/test` - Test invio email
 - **UI**: `/admin/config` → Tab "Email"
 - **Storage**: Tabella `system_settings`, chiavi `email.*`
-- **Sicurezza**: Password mascherata nelle GET, supporto STARTTLS/SSL, OAuth2
-- **Configurazioni supportate**: SMTP server, porta, sicurezza (STARTTLS/SSL/NONE)
-
-### Sistema Backup & Restore Completo (v2.9.0)
-- **Backup Enterprise**: Schedulazione multi-livello (giornalieri, settimanali, mensili)
-- **Cloud Integration**: AWS S3, Google Cloud, Azure, FTP/SFTP
-- **Verifica Integrità**: Controllo checksum MD5 automatico
-- **Retention Policies**: Cleanup automatico configurabile
-- **Crontab Integration**: Schedulazione automatica da UI
+- **Sicurezza**: Password mascherata nelle GET, supporto STARTTLS/SSL
 
 ### Nome Installazione Dinamico nelle Email
 Tutte le email ora usano il nome installazione configurato:
@@ -112,75 +87,20 @@ pip install -r requirements.txt
 -- Tabelle principali
 utenti_autorizzati       -- Utenti con tessera
 log_accessi             -- Log tutti gli accessi
-system_settings         -- Configurazioni sistema (inclusi email.*, sync.*)
-relay_config           -- Configurazione 8 relè dinamica
+system_settings         -- Configurazioni sistema
+relay_config           -- Configurazione 8 relè
 fascie_orarie          -- Orari accesso consentiti
 limiti_accesso_mensili -- Limiti mensili per utente
 utenti_sistema         -- Utenti sistema con profili estesi (v2.7.0+)
 password_reset_tokens  -- Token reset password (v2.7.0+)
 password_history      -- Storico password (v2.7.0+)
-conteggio_ingressi_mensili -- Contatore accessi mensili (v2.8.0+)
-limiti_accesso         -- Limite massimo ingressi mensili (v2.8.0+)
-log_forzature          -- Log concessioni ingressi extra (v2.8.0+)
-```
-
-### System Settings Keys (v2.9.3)
-```sql
--- Email Configuration
-email.smtp_server      -- Server SMTP
-email.smtp_port        -- Porta SMTP (587, 465, 25)
-email.smtp_security    -- Sicurezza (STARTTLS, SSL, NONE)
-email.username         -- Username SMTP
-email.password         -- Password SMTP (criptata)
-email.mittente         -- Email mittente
-email.nome_mittente    -- Nome mittente
-email.enabled          -- Abilitazione servizio
-
--- System Configuration
-sistema.nome_installazione  -- Nome installazione dinamico
-sistema.timezone            -- Timezone sistema
-sistema.formato_data        -- Formato data
-sistema.formato_ora         -- Formato ora (12/24)
-
--- Sync Configuration
-sync.url               -- URL server remoto
-sync.database          -- Nome database
-sync.username          -- Username sync
-sync.password          -- Password sync (criptata)
-sync.comune            -- Filtro comune
-sync.sync_enabled      -- Abilitazione sync automatica
-sync.sync_interval_hours -- Intervallo sincronizzazione
-sync.last_sync         -- Timestamp ultima sync
 ```
 
 ### 3. Variabili Ambiente
 ```bash
 export FLASK_ENV=development
 export FLASK_DEBUG=1
-# Database path automatico tramite db_config.py
-# Supporta /opt/access_control/data/access.db (nuovo)
-# Retrocompatibilità con /opt/access_control/src/access.db (vecchio)
-```
-
-### 4. Configurazione Centralizzata Database (v2.9.0+)
-```python
-# File: src/core/db_config.py - Gestione path centralizzata
-from pathlib import Path
-import os
-
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-DB_PATH = str(PROJECT_ROOT / "data" / "access.db")  # Nuovo percorso
-OLD_DB_PATH = str(PROJECT_ROOT / "src" / "access.db")  # Retrocompatibilità
-
-def get_db_path():
-    """Restituisce il percorso corretto del database"""
-    if os.path.exists(DB_PATH):
-        return DB_PATH
-    elif os.path.exists(OLD_DB_PATH):
-        return OLD_DB_PATH
-    return DB_PATH
-
-CURRENT_DB_PATH = get_db_path()
+export DATABASE_PATH=/opt/access_control/data/database.db
 ```
 
 ## 🕐 Sistema Timezone
@@ -318,13 +238,13 @@ codice_fiscale = controller.read_card()  # Blocking
 controller.disconnect()
 ```
 
-### Test Hardware Migliorato (v2.9.3+)
-Sistema di test hardware completamente rinnovato con monitoraggio database:
+### Test Lettore senza Interferenze (v2.2.0+)
+Il test del lettore ora funziona monitorando il database invece di accedere all'hardware:
 
 ```python
-# hardware_tests.py - Architettura migliorata
-# NON inizializza hardware per evitare conflitti
-# Monitora tabella log_accessi per nuovi inserimenti
+# hardware_tests.py - test_reader()
+# NON inizializza il lettore hardware
+# Monitora la tabella log_accessi per nuovi inserimenti
 cursor.execute("""
     SELECT id, codice_fiscale, autorizzato, motivo_rifiuto, nome_utente 
     FROM log_accessi 
@@ -334,16 +254,14 @@ cursor.execute("""
 ```
 
 **Campi database utilizzati:**
-- `motivo_rifiuto`: "Limite mensile superato", "Utente disattivato", ecc.
-- `nome_utente`: Nome completo dell'utente se disponibile
+- `motivo_rifiuto`: Contiene la motivazione del rifiuto
+- `nome_utente`: Nome dell'utente se disponibile
 - `autorizzato`: Flag booleano per accesso autorizzato/negato
-- **Database path**: Migrato da `/opt/access_control/src/access.db` a `/opt/access_control/data/access.db`
 
-**Funzioni Test:**
-- Endpoint: `POST /api/hardware/test-reader` - Avvia test monitoraggio
-- Endpoint: `POST /api/hardware/stop-reader` - Ferma test
-- Endpoint: `GET /api/hardware/status?test_id=reader` - Stato test
-- **Nessuna interferenza** con il sistema principale operativo
+**Funzione Stop Test:**
+- Endpoint: `POST /api/hardware/stop-reader`
+- Funzione: `stop_reader()` in `hardware_tests.py`
+- Interrompe il test senza interferire con il sistema principale
 
 ### Test Completo Sistema (v2.3.0+)
 Il test integrato ora legge la configurazione relay dal database:
@@ -869,105 +787,153 @@ conn = sqlite3.connect(DB_PATH)
 
 ---
 
-## 💾 Sistema Email e Notifiche (v2.9.1+)
+## 🚀 Novità Versione 3.0.0-RC1 (08/09/2025)
 
-### Configurazione SMTP
-Il sistema supporta configurazione completa SMTP per invio email:
+### 🏗️ Riorganizzazione Struttura Progetto
+La struttura del progetto è stata completamente riorganizzata per essere più pulita e professionale:
 
-```python
-# Modulo: src/api/modules/email_config.py
-@email_config_bp.route('/config', methods=['GET', 'POST'])
-@require_auth()
-@require_permission('all')
-def email_config():
-    # Gestisce configurazione SMTP con sicurezza password
+#### Nuova Struttura Directory
+```
+/opt/access_control/
+├── scripts/
+│   └── system/           # TUTTI gli script di sistema
+│       ├── *.sh          # Script bash manutenzione
+│       ├── access-control-web.service
+│       ├── access-monitor.service
+│       └── monitor_24_7.sh
+├── config/
+│   ├── device_assignments.json
+│   └── logrotate.conf   # Configurazione log rotation
+└── (root pulita senza script sparsi)
 ```
 
-**Parametri supportati:**
-- `email.smtp_server`: Server SMTP (Gmail, Outlook, ecc.)
-- `email.smtp_port`: Porta (587 STARTTLS, 465 SSL, 25 plain)
-- `email.smtp_security`: STARTTLS, SSL, NONE
-- `email.username` / `email.password`: Credenziali SMTP
-- `email.mittente` / `email.nome_mittente`: Identità mittente
-- **OAuth2 support**: Per provider che richiedono autenticazione moderna
-
-### Test Email Integrato
+#### Modifiche Backup Module
+Il modulo backup è stato aggiornato per cercare gli script nella nuova posizione:
 ```python
-@email_config_bp.route('/test', methods=['POST'])
-def test_email():
-    # Invia email di test con configurazione salvata
-    # Usa nome installazione dinamico dal database
+# Prima: PROJECT_ROOT.glob('*.sh')
+# Ora: (PROJECT_ROOT / 'scripts' / 'system').glob('*.sh')
 ```
 
-## 🔄 Sistema Sincronizzazione Server (v2.5.0+)
+### 🛡️ Sistema Enterprise 24/7/365
+Il sistema è stato potenziato per operare 24/7/365 senza interruzioni:
 
-### Connector Odoo Migliorato
-```python
-# File: src/external/odoo_partner_connector.py
-class OdooPartnerConnector:
-    def connect(self):  # Renamed from authenticate()
-        """Stabilisce connessione con server Odoo"""
-        
-    def sync_citizens(self):
-        """Sincronizza cittadini autorizzati"""
+#### Servizio Systemd Enterprise-Grade
+```ini
+# Nuove configurazioni in access-control-web.service
+Environment="PYTHONUNBUFFERED=1"
+ExecStartPre=/bin/bash -c 'if ! test -f /opt/access_control/data/access.db; then exit 1; fi'
+ExecStartPre=/bin/bash -c 'if lsof -i:5000 | grep LISTEN; then fuser -k 5000/tcp; sleep 2; fi'
+
+# Enterprise restart policy
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Performance
+Nice=-10
+CPUWeight=200
 ```
 
-### Stato Connessione Server
-- **Server sync status**: Mostra "connected" se sincronizzato nelle ultime 24 ore
-- **Configurazione database**: Migrata da JSON a `system_settings`
-- **Sync automatica**: Configurabile da 1h a custom via UI
-
-## 🗂️ Gestione Ingressi Aggiuntivi (v2.8.0+)
-
-### Sistema Test Accessi Avanzato
+#### Health Check Endpoint
+Nuovo endpoint `/api/health` per monitoring 24/7 senza autenticazione:
 ```python
-# Endpoint: POST /api/configurazione/test/aggiungi-ingressi
-# Concede ingressi extra quando utente raggiunge limite
-def aggiungi_ingressi():
-    # Logic: nuovo_contatore = max(0, limite - ingressi_aggiuntivi)
-    # Se limite=5 e ingressi_extra=+2 → nuovo_contatore=3
-    # L'utente potrà fare altri 2 accessi
-```
-
-### Simulazione Accesso (NO LOG)
-```python
-# Endpoint: POST /api/configurazione/test/simula-accesso
-# Verifica senza modificare contatori o registrare
-def simula_accesso():
-    # Solo verifica, NON incrementa contatori
-    # NON registra nei log_accessi
-```
-
-## 🔐 Password Management Sicuro (v2.9.3)
-
-### Pattern Frontend Password Security
-Il sistema implementa gestione sicura password in tutti i form:
-
-```javascript
-// Pattern standard per campi password
-if (data.config.password === '********') {  // Backend invia asterischi
-    passwordField.value = '••••••••';        // Frontend mostra pallini
-    passwordField.setAttribute('data-saved', 'true');
-    
-    // Pulisci al primo focus
-    passwordField.addEventListener('focus', function() {
-        if (this.value === '••••••••' && this.getAttribute('data-saved') === 'true') {
-            this.value = '';
-            this.removeAttribute('data-saved');
+@app.route('/api/health')
+def api_health():
+    """
+    Health check per monitoring esterno
+    No auth required per permettere monitoring tools
+    """
+    health_status = {
+        'status': 'healthy|degraded|unhealthy',
+        'timestamp': datetime.now().isoformat(),
+        'checks': {
+            'database': 'ok|error',
+            'memory': 'ok|warning',
+            'cpu': 'ok|warning',
+            'disk': 'ok|warning',
+            'port': 'ok'
         }
-    }, { once: true });
+    }
+    # Returns 200 if healthy/degraded, 503 if unhealthy
+```
+
+#### Monitor Script 24/7
+Nuovo script `monitor_24_7.sh` che:
+- Controlla health endpoint ogni 60 secondi
+- Auto-restart dopo 3 failure consecutive
+- Monitora memoria, CPU, disco
+- Pulisce log automaticamente quando disco > 90%
+- Verifica integrità database
+
+#### Servizio Monitor Watchdog
+```bash
+# access-monitor.service
+[Unit]
+Description=Access Control Monitor - 24/7 Watchdog
+After=access-control-web.service
+Requires=access-control-web.service
+
+[Service]
+Type=simple
+ExecStart=/opt/access_control/scripts/system/monitor_24_7.sh
+Restart=always
+```
+
+### 📊 Logrotate Configuration
+Nuova configurazione enterprise per rotazione log:
+```
+/opt/access_control/logs/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0644 root root
 }
 
-// Al salvataggio: non inviare placeholder
-if (passwordValue === '••••••••' && passwordField.getAttribute('data-saved') === 'true') {
-    passwordValue = '';  // Mantieni password esistente
+# Security audit con retention estesa
+/opt/access_control/logs/security_audit.log {
+    daily
+    rotate 90
+    compress
 }
 ```
 
-**File implementati:**
-- `src/api/static/js/sistema.js` - Email SMTP password
-- Tutti i form con campi password sensibili
+### 🧹 Pulizia e Ottimizzazione
+- Rimossa cartella `da_buttare/` con vecchi file di sviluppo
+- Rimossi database duplicati e obsoleti
+- Pulizia log compressi vecchi
+- Organizzati tutti gli script in `scripts/system/`
+- Root del progetto pulita e minimalista
+
+### 📝 Documentazione Aggiornata
+- **DEVELOPER_GUIDE.md**: Aggiunto sistema Enterprise 24/7
+- **API_DOCUMENTATION.md**: Documentato endpoint `/api/health`
+- **DOCUMENTAZIONE_SISTEMA.md**: Istruzioni complete per setup 24/7
+
+### 🔧 Comandi Setup Enterprise
+```bash
+# Installazione completa 24/7
+sudo cp /opt/access_control/scripts/system/access-control-web.service /etc/systemd/system/
+sudo cp /opt/access_control/scripts/system/access-monitor.service /etc/systemd/system/
+sudo cp /opt/access_control/config/logrotate.conf /etc/logrotate.d/access-control
+
+sudo systemctl daemon-reload
+sudo systemctl enable access-control-web access-monitor
+sudo systemctl start access-control-web access-monitor
+
+# Verifica
+curl http://localhost:5000/api/health
+sudo systemctl status access-control-web
+sudo systemctl status access-monitor
+```
 
 ---
 
-**Ultimo aggiornamento**: 2025-09-08 - Versione 2.9.3
+**Ultimo aggiornamento**: 08/09/2025 - Versione 3.0.0-RC1

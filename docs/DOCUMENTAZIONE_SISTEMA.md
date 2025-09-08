@@ -101,11 +101,50 @@ File: `/etc/systemd/system/access-control-web.service`
 
 ---
 
+## 🚀 AVVIO SISTEMA ENTERPRISE 24/7/365
+
+### Configurazione Auto-Start all'avvio del sistema
+```bash
+# Copia il servizio aggiornato
+sudo cp /opt/access_control/scripts/system/access-control-web.service /etc/systemd/system/
+sudo cp /opt/access_control/scripts/system/access-monitor.service /etc/systemd/system/
+
+# Ricarica systemd
+sudo systemctl daemon-reload
+
+# Abilita auto-start all'avvio
+sudo systemctl enable access-control-web.service
+sudo systemctl enable access-monitor.service
+
+# Avvia i servizi
+sudo systemctl start access-control-web.service
+sudo systemctl start access-monitor.service
+
+# Verifica stato
+sudo systemctl status access-control-web.service
+sudo systemctl status access-monitor.service
+```
+
+### Configurazione Logrotate
+```bash
+# Installa configurazione logrotate
+sudo cp /opt/access_control/config/logrotate.conf /etc/logrotate.d/access-control
+
+# Test logrotate
+sudo logrotate -d /etc/logrotate.d/access-control
+```
+
+### Monitoring 24/7
+- **Health Check**: http://192.168.1.236:5000/api/health (no auth richiesta)
+- **Monitor Script**: Controlla ogni 60 secondi e auto-riavvia se necessario
+- **Auto-Recovery**: Riavvio automatico in caso di crash
+- **Log Rotation**: Automatica giornaliera con compressione
+
 ## 🚀 AVVIO SISTEMA
 
 ### Metodo 1: Script Fix Completo (CONSIGLIATO)
 ```bash
-sudo /opt/access_control/fix_and_restart.sh
+sudo /opt/access_control/scripts/system/fix_and_restart.sh
 ```
 
 Questo script:
@@ -118,7 +157,7 @@ Questo script:
 
 ### Metodo 2: Avvio Semplice
 ```bash
-sudo /opt/access_control/start_system.sh
+sudo /opt/access_control/scripts/system/start_system.sh
 ```
 
 ### Metodo 3: Manuale
@@ -284,7 +323,7 @@ sudo systemctl restart access-control-web
 
 ```bash
 # Avvio
-sudo /opt/access_control/fix_and_restart.sh
+sudo /opt/access_control/scripts/system/fix_and_restart.sh
 
 # Stop
 sudo systemctl stop access-control-web

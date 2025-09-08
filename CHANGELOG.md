@@ -1,5 +1,86 @@
 # 📝 CHANGELOG - Sistema Controllo Accessi
 
+## [3.0.0-RC1] - 2025-09-08 - Enterprise 24/7/365 Release Candidate
+
+### 🚀 Major Changes
+- **Enterprise 24/7/365**: Sistema configurato per operare senza interruzioni
+- **Health Monitoring**: Nuovo endpoint `/api/health` per monitoring esterno
+- **Auto-Recovery**: Monitor watchdog con auto-restart intelligente  
+- **Struttura Pulita**: Riorganizzazione completa directory progetto
+
+### ✨ Features
+- Endpoint `/api/health` senza autenticazione per monitoring tools
+- Script `monitor_24_7.sh` per watchdog continuo
+- Servizio `access-monitor.service` per supervisione
+- Configurazione `logrotate` per gestione log enterprise
+- Pre-check database e porta in systemd service
+- Resource limits aumentati (65K file, 4K processi)
+- Priorità CPU alta (-10 nice value)
+
+### 🏗️ Struttura
+- Tutti gli script spostati in `/scripts/system/`
+- File service spostati in `/scripts/system/`
+- Configurazioni in `/config/`
+- Root pulita e organizzata
+- Rimossa cartella `da_buttare/`
+- Rimossi database duplicati e file temporanei
+
+### 📝 Documentazione  
+- DEVELOPER_GUIDE.md aggiornata con sistema 24/7
+- API_DOCUMENTATION.md con nuovo endpoint health
+- DOCUMENTAZIONE_SISTEMA.md con setup enterprise
+
+### 🔧 Technical
+- Systemd con `StartLimitIntervalSec=0` e `StartLimitBurst=0`
+- Environment `PYTHONUNBUFFERED=1` per log real-time
+- Kill processo su porta 5000 se occupata
+- Verifica esistenza database prima dell'avvio
+- Monitor ogni 60 secondi con auto-restart dopo 3 failure
+
+---
+
+## [2.9.4] - 2025-09-08 - Sistema Testing Completo e Fix Sincronizzazione
+
+### ✨ Nuove Funzionalità  
+- **Sistema Testing Accessi Completo**
+  - Test massivo con batch da 10/50/100 tessere
+  - Simulazione code di accesso realistiche
+  - Delay configurabili tra letture (0.5-5 secondi)
+  - Progress bar con statistiche real-time
+  - Report dettagliato con tempi di elaborazione
+
+### 🔧 Miglioramenti
+- **Sincronizzazione Odoo Migliorata**
+  - Supporto per cache locale dei partner
+  - Gestione robusta timeout di rete
+  - Retry automatico con backoff esponenziale
+  - Log dettagliati delle operazioni
+
+---
+
+## [2.9.3] - 2025-09-08 - Password SMTP Security Fix
+
+### 🔒 Security Fix
+- **Password SMTP Mascherata**
+  - Backend non restituisce mai password in chiaro
+  - Frontend mostra pallini (••••••••) per password salvate
+  - Click sul campo svuota automaticamente per nuova password
+  - Non invia pallini al server se password non modificata
+
+---
+
+## [2.9.2] - 2025-09-08 - Sistema Monitoraggio Real-Time
+
+### ✨ Nuove Funzionalità
+- **Dashboard Stato Sistema Real-Time**
+  - Indicatore stato online/offline con colori
+  - Uptime sistema formattato (giorni/ore/minuti)
+  - Utilizzo RAM con indicatori colorati
+  - Utilizzo CPU real-time
+  - Versione sistema sempre visibile
+
+---
+
 ## [2.9.1] - 2025-09-08
 
 ### ✨ Nuove Funzionalità

@@ -1616,6 +1616,67 @@ def api_system_status():
             'service_running': False
         })
 
+@app.route('/api/health')
+def api_health():
+    """
+    Health check endpoint per monitoring 24/7
+    Non richiede autenticazione per permettere monitoring esterno
+    """
+    try:
+        import psutil
+        from datetime import datetime
+        
+        health_status = {
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'checks': {}
+        }
+        
+        # 1. Check database
+        try:
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM utenti_autorizzati")
+                count = cursor.fetchone()[0]
+                conn.close()
+                health_status['checks']['database'] = 'ok'
+            else:
+                health_status['checks']['database'] = 'error'
+                health_status['status'] = 'degraded'
+        except:
+            health_status['checks']['database'] = 'error'
+            health_status['status'] = 'unhealthy'
+        
+        # 2. Check system resources
+        memory = psutil.virtual_memory()
+        cpu = psutil.cpu_percent(interval=0.1)
+        disk = psutil.disk_usage('/')
+        
+        health_status['checks']['memory'] = 'ok' if memory.percent < 85 else 'warning'
+        health_status['checks']['cpu'] = 'ok' if cpu < 90 else 'warning'
+        health_status['checks']['disk'] = 'ok' if disk.percent < 90 else 'warning'
+        
+        if memory.percent > 95 or cpu > 95 or disk.percent > 95:
+            health_status['status'] = 'unhealthy'
+        elif memory.percent > 85 or cpu > 90 or disk.percent > 90:
+            health_status['status'] = 'degraded'
+        
+        # 3. Check port 5000
+        health_status['checks']['port'] = 'ok'  # Se risponde, la porta è ok
+        
+        # Return appropriate status code
+        status_code = 200 if health_status['status'] == 'healthy' else \
+                     503 if health_status['status'] == 'unhealthy' else 200
+        
+        return jsonify(health_status), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 503
+
 # ===============================
 # API ENDPOINTS CONFIGURAZIONI - USANDO CONFIG ESISTENTE
 # ===============================

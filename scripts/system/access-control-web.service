@@ -1,0 +1,52 @@
+[Unit]
+Description=Access Control Web API Service - Enterprise 24/7
+Documentation=file:///opt/access_control/docs/DOCUMENTAZIONE_SISTEMA.md
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/opt/access_control
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/access_control
+Environment="PATH=/opt/access_control/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONPATH=/opt/access_control/src"
+Environment="PYTHONUNBUFFERED=1"
+
+# Pre-start checks
+ExecStartPre=/bin/bash -c 'if ! test -f /opt/access_control/data/access.db; then exit 1; fi'
+ExecStartPre=/bin/bash -c 'if lsof -i:5000 | grep LISTEN; then fuser -k 5000/tcp; sleep 2; fi'
+
+# Main service
+ExecStart=/opt/access_control/venv/bin/python /opt/access_control/src/api/web_api.py
+
+# Hardware access required
+PrivateDevices=no
+
+# Enterprise-grade restart policy for 24/7/365
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+# Kill hanging processes
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Performance priority
+Nice=-10
+CPUWeight=200
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=access-control
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=Access Control Monitor - 24/7 Watchdog
+After=access-control-web.service
+Requires=access-control-web.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/access_control/scripts/system/monitor_24_7.sh
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

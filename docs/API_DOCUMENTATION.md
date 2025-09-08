@@ -22,6 +22,43 @@ Tutti i campi password nel sistema seguono queste regole di sicurezza:
 
 ## 📊 System Monitoring Endpoints
 
+### GET `/api/health` 🆕 v3.0.0
+**NO AUTHENTICATION REQUIRED** - Endpoint per monitoring esterno 24/7.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-09-08T10:30:00",
+  "checks": {
+    "database": "ok",
+    "memory": "ok",
+    "cpu": "ok",
+    "disk": "ok",
+    "port": "ok"
+  }
+}
+```
+
+**Status Values:**
+- `healthy` - Sistema completamente operativo
+- `degraded` - Sistema operativo con warning (memoria/cpu/disco alto)
+- `unhealthy` - Sistema con errori critici
+
+**Check Values:**
+- `ok` - Controllo passato
+- `warning` - Soglia di warning superata
+- `error` - Errore critico
+
+**HTTP Status Codes:**
+- `200` - Sistema healthy o degraded
+- `503` - Sistema unhealthy
+
+**Thresholds:**
+- Memory: warning > 85%, error > 95%
+- CPU: warning > 90%, error > 95%
+- Disk: warning > 90%, error > 95%
+
 ### GET `/api/system-status`
 Restituisce lo stato del sistema con metriche real-time.
 

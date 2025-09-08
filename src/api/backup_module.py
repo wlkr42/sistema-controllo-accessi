@@ -322,10 +322,15 @@ def create_complete_backup(operation_id):
             if file_path.exists():
                 shutil.copy2(file_path, temp_dir / file_name)
         
-        # Copia tutti gli script .sh nella root
-        for sh_file in PROJECT_ROOT.glob('*.sh'):
-            if sh_file.is_file():
-                shutil.copy2(sh_file, temp_dir / sh_file.name)
+        # Copia tutti gli script .sh dalla cartella scripts/system
+        scripts_dir = PROJECT_ROOT / 'scripts' / 'system'
+        if scripts_dir.exists():
+            for sh_file in scripts_dir.glob('*.sh'):
+                if sh_file.is_file():
+                    # Mantieni la struttura delle cartelle nel backup
+                    dest_dir = temp_dir / 'scripts' / 'system'
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(sh_file, dest_dir / sh_file.name)
         
         # Copia tutti i file .py nella root (se esistono)
         for py_file in PROJECT_ROOT.glob('*.py'):

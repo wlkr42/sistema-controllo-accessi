@@ -1,9 +1,0 @@
-TASK COMPLETATO: [descrizione]
-
-Aggiorna .continue/project_memory.json con:
-1. File creati: [lista]
-2. File modificati: [lista]
-3. File spostati in da_buttare: [lista]
-4. Nuove funzionalità: [descrizione]
-
-Aggiungi timestamp e descrizione in update_history.
