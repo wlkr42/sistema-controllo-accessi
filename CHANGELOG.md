@@ -5,6 +5,32 @@ Tutte le modifiche importanti a questo progetto sono documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.0.0/),
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2025-09-06
+
+### ✨ Aggiunto
+- **Nome Installazione Dinamico**: Il nome del terminale ora è configurabile e visualizzato nella navbar
+  - Configurabile da `/admin/config` → Tab "Sistema" → Campo "Nome Installazione"
+  - Salvato nel database in `system_settings` con chiave `sistema.nome_installazione`
+  - Visualizzato nella navbar in alto a destra, prima del nome utente
+  - Default: "Terminale" se non configurato
+
+### 🔧 Modificato
+- **Dashboard Template**: La navbar ora mostra dinamicamente il nome installazione
+- **Configurazione Sistema**: Il form nella tab Sistema ora salva realmente i dati
+  - Nome Installazione
+  - Porta Web
+  - Modalità Debug
+  - Timeout Sessione
+  - Ambiente (production/development/testing)
+
+### 🔌 API
+- `GET /api/admin/sistema-config`: Recupera configurazioni sistema
+- `POST /api/admin/sistema-config`: Salva configurazioni sistema
+
+### 📝 Documentazione
+- Aggiornato DEVELOPER_GUIDE.md con dettagli implementazione
+- Aggiornato API_DOCUMENTATION.md con nuovi endpoint
+
 ## [2.8.0] - 2025-09-06
 
 ### ✨ Aggiunto

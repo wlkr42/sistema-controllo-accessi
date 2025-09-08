@@ -39,6 +39,21 @@
 └── requirements.txt                # Dipendenze Python
 ```
 
+## 🆕 Funzionalità Recenti (v2.8.1)
+
+### Nome Installazione Dinamico
+Il sistema ora supporta la personalizzazione del nome dell'installazione visualizzato nella navbar:
+
+- **Configurazione**: `/admin/config` → Tab "Sistema" → Campo "Nome Installazione"
+- **Storage**: Tabella `system_settings`, chiave `sistema.nome_installazione`
+- **Visualizzazione**: Navbar in alto a destra, prima del nome utente
+- **Default**: "Terminale" se non configurato
+
+**File modificati**:
+- `src/api/web_api.py`: Endpoint `/api/admin/sistema-config` (GET/POST)
+- `src/api/dashboard_templates.py`: Template navbar e JavaScript gestione form
+- Funzione `get_nome_installazione()` per recupero valore dal database
+
 ## 🔧 Configurazione Sviluppo
 
 ### 1. Setup Ambiente

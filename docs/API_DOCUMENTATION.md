@@ -434,6 +434,50 @@ Elimina utente.
 
 ---
 
+## ⚙️ System Configuration Endpoints
+
+### GET `/api/admin/sistema-config`
+Recupera le configurazioni del sistema.
+
+**Response:**
+```json
+{
+  "success": true,
+  "config": {
+    "nome_installazione": "Isola Ecologica RAEE - Rende",
+    "porta_web": 5000,
+    "debug_mode": false,
+    "timeout_sessione": 1800,
+    "ambiente": "production"
+  }
+}
+```
+
+### POST `/api/admin/sistema-config`
+Salva le configurazioni del sistema.
+
+**Request Body:**
+```json
+{
+  "nome_installazione": "Nuovo Nome Installazione",
+  "porta_web": 5000,
+  "debug_mode": false,
+  "timeout_sessione": 1800,
+  "ambiente": "production"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true
+}
+```
+
+**Note:** Il nome installazione viene visualizzato nella navbar dell'applicazione.
+
+---
+
 ## 📅 Schedule Configuration Endpoints
 
 ### GET `/api/fasce-orarie`

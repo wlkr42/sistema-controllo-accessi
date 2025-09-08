@@ -121,7 +121,7 @@ def get_dashboard_template():
                 <span class="clock-date"></span>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <span class="navbar-text me-3">Isola Ecologica RAEE - Rende</span>
+                <span class="navbar-text me-3">{{ nome_installazione|default('Terminale') }}</span>
                 <div id="user-menu-placeholder"></div>
             </div>
         </div>
@@ -1200,10 +1200,58 @@ ADMIN_CONFIG_TEMPLATE = """
             checkSystemStatus();
         }
         
+        // Carica configurazioni sistema all'avvio
+        function loadSistemaConfig() {
+            fetch('/api/admin/sistema-config')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.config) {
+                        document.getElementById('nome-installazione').value = data.config.nome_installazione || 'Terminale';
+                        document.getElementById('porta-web').value = data.config.porta_web || 5000;
+                        document.getElementById('debug-mode').checked = data.config.debug_mode || false;
+                        document.getElementById('timeout-sessione').value = data.config.timeout_sessione || 1800;
+                        document.getElementById('ambiente').value = data.config.ambiente || 'production';
+                    }
+                })
+                .catch(error => console.error('Errore caricamento config sistema:', error));
+        }
+        
+        // Carica le configurazioni all'avvio
+        loadSistemaConfig();
+        
         // Form handlers
         document.getElementById('sistema-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            alert('Configurazioni sistema salvate!\\n\\nFunzionalità completa in sviluppo.');
+            
+            const config = {
+                nome_installazione: document.getElementById('nome-installazione').value,
+                porta_web: parseInt(document.getElementById('porta-web').value),
+                debug_mode: document.getElementById('debug-mode').checked,
+                timeout_sessione: parseInt(document.getElementById('timeout-sessione').value),
+                ambiente: document.getElementById('ambiente').value
+            };
+            
+            fetch('/api/admin/sistema-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Configurazioni sistema salvate con successo!\\n\\nIl nome installazione sarà visibile nella navbar al prossimo caricamento pagina.');
+                    // Ricarica la pagina per mostrare il nuovo nome
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    alert('❌ Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
+                }
+            })
+            .catch(error => {
+                console.error('Errore:', error);
+                alert('❌ Errore di comunicazione con il server');
+            });
         });
         
         function restartSystem() {

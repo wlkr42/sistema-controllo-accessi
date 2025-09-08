@@ -186,10 +186,14 @@ def dashboard() -> FlaskResponse:
             }
         ]
     
+    # Recupera il nome installazione dal database
+    nome_installazione = get_nome_installazione()
+    
     return render_template_string(
         get_dashboard_template(), 
         session=session,
-        menu_items=menu_items
+        menu_items=menu_items,
+        nome_installazione=nome_installazione
     )
 
 @app.route('/utenti-autorizzati')
@@ -1097,6 +1101,87 @@ def api_save_clock_config():
             
     except Exception as e:
         logger.error(f"Errore salvataggio config orologio: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/admin/sistema-config', methods=['GET'])
+@require_auth()
+@require_permission('all')
+def api_get_sistema_config():
+    """Recupera configurazioni sistema"""
+    try:
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            # Recupera configurazioni sistema
+            config = {}
+            keys = ['sistema.nome_installazione', 'sistema.porta_web', 'sistema.debug_mode', 
+                    'sistema.timeout_sessione', 'sistema.ambiente']
+            
+            for key in keys:
+                cursor.execute("SELECT value FROM system_settings WHERE key = ?", (key,))
+                result = cursor.fetchone()
+                simple_key = key.replace('sistema.', '')
+                if result:
+                    value = result[0]
+                    # Converti tipi
+                    if simple_key == 'debug_mode':
+                        config[simple_key] = value.lower() == 'true'
+                    elif simple_key in ['porta_web', 'timeout_sessione']:
+                        config[simple_key] = int(value) if value.isdigit() else 5000
+                    else:
+                        config[simple_key] = value
+                else:
+                    # Valori default
+                    defaults = {
+                        'nome_installazione': 'Isola Ecologica RAEE - Rende',
+                        'porta_web': 5000,
+                        'debug_mode': False,
+                        'timeout_sessione': 1800,
+                        'ambiente': 'production'
+                    }
+                    config[simple_key] = defaults.get(simple_key)
+            
+            conn.close()
+            return jsonify({'success': True, 'config': config})
+    except Exception as e:
+        logger.error(f"Errore recupero config sistema: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/admin/sistema-config', methods=['POST'])
+@require_auth()
+@require_permission('all')
+def api_save_sistema_config():
+    """Salva configurazioni sistema"""
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            
+            # Mappa dei campi da salvare
+            settings = {
+                'sistema.nome_installazione': data.get('nome_installazione', 'Terminale'),
+                'sistema.porta_web': str(data.get('porta_web', 5000)),
+                'sistema.debug_mode': 'true' if data.get('debug_mode') else 'false',
+                'sistema.timeout_sessione': str(data.get('timeout_sessione', 1800)),
+                'sistema.ambiente': data.get('ambiente', 'production')
+            }
+            
+            # Salva o aggiorna ogni impostazione
+            for key, value in settings.items():
+                cursor.execute("""
+                    INSERT OR REPLACE INTO system_settings (key, value, updated_at) 
+                    VALUES (?, ?, datetime('now'))
+                """, (key, value))
+            
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"Configurazioni sistema salvate: {settings}")
+            return jsonify({'success': True})
+            
+    except Exception as e:
+        logger.error(f"Errore salvataggio config sistema: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/configurazione-orari')
