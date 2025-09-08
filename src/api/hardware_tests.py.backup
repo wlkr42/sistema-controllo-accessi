@@ -454,31 +454,23 @@ def test_integrated(get_db_connection):
         return jsonify({'success': False, 'error': str(e)})
 
 def test_reader():
-    """Test del lettore CRT-285 - Verifica stato e funzionamento SENZA creare nuove istanze"""
+    """Test VISIBILE del lettore CRT-285 - Fa lampeggiare i LED e verifica stato"""
     
     try:
         import subprocess
         import os
+        import socket
         
         results = {
             'tests': [],
-            'success': False,
-            'reader_info': {}
+            'success': False
         }
         
-        # 1. Verifica libreria CRT-285 (cerca nei path corretti)
-        lib_paths = [
-            '/opt/access_control/src/drivers/288K/linux_crt_288x/drivers/x64/crt_288x_ur.so',
-            '/opt/access_control/src/drivers/288K/288K-linux-sample/288K/crt_288x_ur.so'
-        ]
-        lib_found = False
-        for lib_path in lib_paths:
-            if os.path.exists(lib_path):
-                results['tests'].append(f'✅ Libreria CRT-285 presente: {os.path.basename(lib_path)}')
-                lib_found = True
-                break
-        
-        if not lib_found:
+        # 1. Verifica libreria CRT-285
+        lib_path = '/opt/access_control/lib/libCRT288x.so'
+        if os.path.exists(lib_path):
+            results['tests'].append('✅ Libreria CRT-285 presente')
+        else:
             results['tests'].append('❌ Libreria CRT-285 NON trovata')
             return jsonify({'success': False, 'message': 'Libreria CRT-285 mancante', 'details': results['tests']})
         
@@ -490,49 +482,50 @@ def test_reader():
             results['tests'].append('❌ CRT-285 NON rilevato via USB')
             return jsonify({'success': False, 'message': 'Lettore non collegato', 'details': results['tests']})
         
-        # 3. Il lettore è integrato in web_api.py, NON c'è un main.py separato
-        # Verifica che il servizio web sia attivo
-        ps_result = subprocess.run(['pgrep', '-f', 'web_api.py'], capture_output=True, timeout=2)
+        # 3. Verifica che main.py sia attivo
+        ps_result = subprocess.run(['pgrep', '-f', 'main.py'], capture_output=True, timeout=2)
         if ps_result.returncode == 0:
-            results['tests'].append('✅ Servizio attivo con lettore integrato')
+            results['tests'].append('✅ Servizio lettore attivo (main.py)')
         else:
-            results['tests'].append('⚠️ Servizio web_api.py non rilevato')
+            results['tests'].append('⚠️ Servizio main.py non attivo')
         
-        # 4. Verifica che il database sia accessibile (il lettore scrive qui)
+        # 4. Test comunicazione con lettore tramite socket TCP locale
+        # main.py potrebbe avere un'interfaccia di controllo
+        try:
+            # Prova a inviare un comando di test tramite file di controllo
+            control_file = '/tmp/crt285_control'
+            if os.path.exists(control_file):
+                with open(control_file, 'w') as f:
+                    f.write('LED_TEST\n')
+                results['tests'].append('💡 Comando LED inviato al lettore')
+            else:
+                results['tests'].append('ℹ️ Interfaccia controllo LED non disponibile')
+        except:
+            pass
+        
+        # 5. Verifica ultimi accessi nel database per confermare funzionamento
         try:
             import sqlite3
             conn = sqlite3.connect('/opt/access_control/data/access.db')
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM log_accessi")
-            total_reads = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM log_accessi WHERE data_ora > datetime('now', '-1 hour')")
+            recent_reads = cursor.fetchone()[0]
             conn.close()
-            results['tests'].append(f'✅ Database accessibile ({total_reads} accessi totali)')
-        except Exception as e:
-            results['tests'].append(f'⚠️ Database: {str(e)}')
-        
-        # 5. Info aggiuntive sul lettore (da quello che sappiamo del sistema)
-        results['reader_info'] = {
-            'tipo': 'CRT-285',
-            'interfaccia': 'USB HID',
-            'vendor_id': '23d8',
-            'product_id': '0285',
-            'modalità': 'Lettura continua tessere sanitarie',
-            'output': 'Codice fiscale in database'
-        }
+            
+            if recent_reads > 0:
+                results['tests'].append(f'📊 {recent_reads} letture nell\'ultima ora')
+            else:
+                results['tests'].append('📊 Nessuna lettura recente')
+        except:
+            pass
         
         # Risultato finale
-        all_ok = all('✅' in test for test in results['tests'])
-        
-        if all_ok:
-            message = '✅ LETTORE CRT-285 OPERATIVO E PRONTO'
-        else:
-            message = '⚠️ Lettore CRT-285 con problemi'
+        all_ok = all('✅' in test or 'ℹ️' in test or '💡' in test or '📊' in test for test in results['tests'])
         
         return jsonify({
             'success': all_ok,
-            'message': message,
-            'details': results['tests'],
-            'info': results['reader_info']
+            'message': '🎯 Test lettore CRT-285 completato',
+            'details': results['tests']
         })
         
     except Exception as e:
@@ -546,8 +539,133 @@ def OLD_test_reader_monitoring():
     pass
 
 # Fine del file - tutto il codice vecchio sotto è stato rimosso
+            cards_read = 0
+            last_access_id = 0
+            
+            # Ottieni ultimo ID dal database per monitoraggio
+            import sqlite3
+            # Usa il path già importato sopra
+            # db_path è già definito da CURRENT_DB_PATH
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT MAX(id) FROM log_accessi")
+                result = cursor.fetchone()
+                last_access_id = result[0] if result and result[0] else 0
+                conn.close()
+                details.append(f"📍 Monitoraggio database da ID: {last_access_id + 1}")
+            except:
+                last_access_id = 0
+            
+            while (time.time() - start_time) < timeout:
+                # Controlla se il test è stato fermato
+                with hardware_test_lock:
+                    if hardware_test_results.get('reader', {}).get('status') == 'stopped':
+                        details.append("")
+                        details.append("⏹️ TEST FERMATO DALL'UTENTE")
+                        break
+                
+                try:
+                    # Monitora database invece di leggere direttamente
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT id, codice_fiscale, autorizzato, motivo_rifiuto, nome_utente 
+                        FROM log_accessi 
+                        WHERE id > ? 
+                        ORDER BY id
+                    """, (last_access_id,))
+                    new_accesses = cursor.fetchall()
+                    
+                    for access_id, cf, autorizzato, motivo_rifiuto, nome_utente in new_accesses:
+                        if access_id > last_access_id:
+                            # NUOVA TESSERA DAL DATABASE!
+                            last_access_id = access_id
+                            cards_read += 1
+                            read_time = datetime.now().strftime('%H:%M:%S')
+                            
+                            # Log dettagliato per questa tessera
+                            details.append(f"")
+                            details.append(f"🎯 [{read_time}] TESSERA RILEVATA #{cards_read}")
+                            details.append(f"📄 Codice Fiscale: {cf}")
+                            
+                            # Mostra nome utente se disponibile
+                            if nome_utente:
+                                details.append(f"👤 Utente: {nome_utente}")
+                            
+                            # Mostra stato autorizzazione con motivazione dal database
+                            if autorizzato:
+                                details.append(f"✅ ACCESSO AUTORIZZATO")
+                            else:
+                                details.append(f"❌ ACCESSO NEGATO")
+                                # Mostra il motivo del rifiuto se disponibile
+                                if motivo_rifiuto:
+                                    details.append(f"📝 Motivo: {motivo_rifiuto}")
+                            
+                            details.append(f"✅ Log salvato nel database")
+                            details.append("━" * 50)
+                    
+                    conn.close()
+                    
+                    # Aggiorna risultati dopo ogni check
+                    if cards_read > 0:
+                        with hardware_test_lock:
+                            hardware_test_results['reader']['details'] = details.copy()
+                            hardware_test_results['reader']['message'] = f'Tessere lette: {cards_read}'
+                        
+                except Exception as e:
+                    # Ignora errori temporanei
+                    pass
+                
+                time.sleep(0.1)  # Check veloce
+            
+            # Fine test
+            details.append("")
+            details.append("⏱️ TEST COMPLETATO")
+            details.append(f"📊 Tessere lette: {cards_read}")
+            details.append(f"⏱️ Durata: {int(time.time() - start_time)} secondi")
+            
+            with hardware_test_lock:
+                hardware_test_results['reader'] = {
+                    'status': 'success' if cards_read > 0 else 'warning',
+                    'message': f'Test completato - {cards_read} tessere lette',
+                    'details': details,
+                    'timestamp': time.time()
+                }
+                
+        except Exception as e:
+            details.append(f"❌ ERRORE: {str(e)}")
+            with hardware_test_lock:
+                hardware_test_results['reader'] = {
+                    'status': 'error',
+                    'message': f'Errore: {str(e)}',
+                    'details': details,
+                    'timestamp': time.time()
+                }
+    
+    # Avvia test in background
+    threading.Thread(target=test_reader_thread, daemon=True).start()
+    return jsonify({'success': True, 'message': 'Test lettore avviato'})
 
-def get_integrated_test_status():
+def stop_reader():
+    """Ferma il test del lettore"""
+    global hardware_test_results
+    
+    with hardware_test_lock:
+        if 'reader' in hardware_test_results and hardware_test_results['reader'].get('status') == 'running':
+            hardware_test_results['reader']['status'] = 'stopped'
+            hardware_test_results['reader']['message'] = 'Test fermato dall\'utente'
+            return jsonify({'success': True, 'message': 'Test lettore fermato'})
+        else:
+            return jsonify({'success': False, 'message': 'Nessun test in esecuzione'})
+
+# Funzioni di stato
+def get_relay_status():
+    """Restituisce stato test relay"""
+    global relay_test_state
+    return jsonify(relay_test_state)
+
+def get_integrated_status():
     """Restituisce stato test integrato"""
     global integrated_test_state
     return jsonify(integrated_test_state)

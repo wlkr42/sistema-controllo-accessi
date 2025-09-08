@@ -242,19 +242,52 @@ class SimpleHardwareManager {
             device = this.detectedHardware.usb_devices[deviceIndex];
             deviceKey = `usb:${device.device_id}`;
             deviceName = `${device.description} (${device.device_id})`;
-            // Mappatura device USB → porta seriale reale
-            // Se una sola porta, la usiamo; se più, chiediamo all’utente
-            if (this.detectedHardware.serial_ports && this.detectedHardware.serial_ports.length === 1) {
-                devicePath = this.detectedHardware.serial_ports[0].port;
-            } else if (this.detectedHardware.serial_ports && this.detectedHardware.serial_ports.length > 1) {
-                // Chiedi all’utente quale porta associare
-                const portList = this.detectedHardware.serial_ports.map(p => p.port).join('\n');
-                devicePath = prompt(
-                    `Sono state rilevate più porte seriali:\n${portList}\n\nInserisci la porta da associare a questo device (es. /dev/ttyACM0):`,
-                    this.detectedHardware.serial_ports[0].port
-                );
+            
+            // CONFIGURAZIONE CORRETTA basata sull'analisi del codice
+            if (device.device_id === '23d8:0285') {
+                // CRT-285: USA SEMPRE USB DIRETTO, il device_path viene IGNORATO dal driver!
+                devicePath = ''; // Il CRT-285 NON usa porta seriale, usa libusb direttamente
+                console.log('CRT-285 rilevato: usa SEMPRE comunicazione USB diretta (device_path ignorato dal driver)');
+                alert('CRT-285 rilevato!\n\nQuesto lettore usa comunicazione USB diretta.\nNON richiede configurazione porta seriale.');
+            } else if (device.description && device.description.includes('USB-RLY08')) {
+                // USB-RLY08: RICHIEDE SEMPRE una porta seriale
+                if (this.detectedHardware.serial_ports && this.detectedHardware.serial_ports.length > 0) {
+                    const portList = this.detectedHardware.serial_ports.map(p => p.port).join('\n');
+                    devicePath = prompt(
+                        `USB-RLY08 rilevato!\n\n` +
+                        `Questo controller RICHIEDE una porta seriale.\n\n` +
+                        `Porte disponibili:\n${portList}\n\n` +
+                        `Inserisci la porta (es. /dev/ttyACM0):`,
+                        this.detectedHardware.serial_ports[0].port
+                    );
+                    if (!devicePath) {
+                        alert('ATTENZIONE: USB-RLY08 richiede una porta seriale per funzionare!');
+                        devicePath = '/dev/ttyACM0'; // Default comune
+                    }
+                } else {
+                    devicePath = prompt(
+                        'USB-RLY08 rilevato!\n\n' +
+                        'Inserisci la porta seriale (es. /dev/ttyACM0):', 
+                        '/dev/ttyACM0'
+                    );
+                }
             } else {
-                devicePath = '';
+                // Altri dispositivi USB generici
+                if (this.detectedHardware.serial_ports && this.detectedHardware.serial_ports.length > 0) {
+                    const portList = this.detectedHardware.serial_ports.map(p => p.port).join('\n');
+                    devicePath = prompt(
+                        `Dispositivo USB rilevato: ${device.description}\n\n` +
+                        `Porte seriali disponibili:\n${portList}\n\n` +
+                        `Seleziona la porta da associare (lascia vuoto se non serve):`,
+                        ''
+                    );
+                } else {
+                    devicePath = prompt(
+                        `Dispositivo USB rilevato: ${device.description}\n\n` +
+                        `Inserisci la porta seriale (lascia vuoto se non serve):`, 
+                        ''
+                    );
+                }
             }
         } else if (sourceType === 'serial') {
             device = this.detectedHardware.serial_ports[deviceIndex];
@@ -271,13 +304,17 @@ class SimpleHardwareManager {
         if (!device) return;
 
         // Mostra modal per selezione funzione
-        this.showDeviceAssignmentModal(deviceKey, deviceName, device, devicePath);
-
-        // Salva devicePath temporaneamente per conferma
-        window.lastDevicePathSelected = devicePath;
+        this.showDeviceAssignmentModal(deviceKey, deviceName, devicePath);
     }
     
-    showDeviceAssignmentModal(deviceKey, deviceName, deviceData, devicePath) {
+    showDeviceAssignmentModal(deviceKey, deviceName, devicePath) {
+        // Salva i dati nel modal stesso per evitare problemi di escape
+        window.pendingAssignment = {
+            deviceKey: deviceKey,
+            deviceName: deviceName,
+            devicePath: devicePath
+        };
+        
         const modalContent = `
             <div class="modal fade" id="assignmentModal" tabindex="-1">
                 <div class="modal-dialog">
@@ -300,7 +337,7 @@ class SimpleHardwareManager {
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                            <button type="button" class="btn btn-primary" onclick="hardwareManager.confirmAssignment('${deviceKey}', '${deviceName}')">
+                            <button type="button" class="btn btn-primary" id="confirm-assignment-btn">
                                 Assegna
                             </button>
                         </div>
@@ -315,18 +352,35 @@ class SimpleHardwareManager {
         
         // Aggiungi nuovo modal
         document.body.insertAdjacentHTML('beforeend', modalContent);
+        
+        // Aggiungi event listener al pulsante
+        document.getElementById('confirm-assignment-btn').addEventListener('click', () => {
+            this.confirmAssignmentFromModal();
+        });
+        
         const modal = new bootstrap.Modal(document.getElementById('assignmentModal'));
         modal.show();
     }
     
-    confirmAssignment(deviceKey, deviceName) {
+    confirmAssignmentFromModal() {
+        // Usa i dati salvati in window.pendingAssignment
+        if (!window.pendingAssignment) {
+            alert('Errore: dati dispositivo non trovati');
+            return;
+        }
+        
+        const {deviceKey, deviceName, devicePath} = window.pendingAssignment;
+        this.confirmAssignment(deviceKey, deviceName, devicePath);
+    }
+    
+    confirmAssignment(deviceKey, deviceName, devicePath) {
         const functionSelect = document.getElementById('device-function-select');
         const selectedFunction = functionSelect.value;
 
-        // Recupera devicePath dal modal (hack: lo passiamo come attributo temporaneo)
-        let devicePath = '';
-        if (window.lastDevicePathSelected) {
-            devicePath = window.lastDevicePathSelected;
+        // devicePath ora viene passato come parametro diretto
+        if (!devicePath) {
+            console.warn('Nessun device_path specificato per', deviceName);
+            devicePath = ''; // Usa stringa vuota se non specificato
         }
 
         if (!selectedFunction) {
@@ -334,11 +388,14 @@ class SimpleHardwareManager {
             return;
         }
 
-        // Salva assegnazione
+        // Salva assegnazione con tutti i parametri necessari per il test dinamico
         this.deviceAssignments[selectedFunction] = {
             device_key: deviceKey,
             device_name: deviceName,
-            device_path: devicePath
+            device_path: devicePath,
+            // Aggiungi parametri specifici per tipo di dispositivo
+            reader_type: selectedFunction === 'card_reader' ? 'CRT285' : undefined,
+            baudrate: selectedFunction === 'relay_controller' ? 19200 : undefined
         };
 
         // Aggiorna dropdown configurazione
@@ -347,6 +404,9 @@ class SimpleHardwareManager {
         // Chiudi modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('assignmentModal'));
         modal.hide();
+        
+        // Pulisci dati temporanei
+        window.pendingAssignment = null;
 
         this.showAlert('success', `${deviceName} assegnato come ${this.getFunctionDisplayName(selectedFunction)}`);
     }
@@ -418,17 +478,23 @@ class SimpleHardwareManager {
         try {
             let endpoint, body;
             
+            // USA GLI ENDPOINT GIUSTI CHE DAVVERO TESTANO I DISPOSITIVI!
+            
             if (deviceType === 'relay_controller') {
-                // Usa l'endpoint che funziona nel dashboard principale
+                // Test VERO del controller relè - attiva tutti i relè in sequenza
                 endpoint = '/api/test_relay';
-                body = {};
+                body = {};  // Non serve nessun parametro, usa la configurazione salvata
+                console.log('Testing relay controller con test VERO dei relè');
+            } else if (deviceType === 'card_reader') {
+                // Test VERO del lettore tessere - usa l'endpoint dedicato
+                endpoint = '/api/hardware/test-reader';
+                body = {};  // Non serve nessun parametro, testa il lettore attivo
+                console.log('Testing card reader con test VERO del lettore');
             } else {
-                // Per il lettore tessere
-                endpoint = '/api/hardware/test-connection';
+                // Altri dispositivi
                 body = {
                     type: deviceType,
-                    device_path: assignment.device_path || assignment.device_key,
-                    device_id: assignment.device_key
+                    device_path: assignment.device_path || assignment.device_key
                 };
             }
             
@@ -479,9 +545,28 @@ class SimpleHardwareManager {
         // Messaggi personalizzati per ogni tipo di dispositivo
         if (success) {
             if (deviceType === 'card_reader') {
-                message = '✅ Lettore tessere connesso e funzionante!';
+                // Per il lettore mostra più dettagli se disponibili
+                if (data.details) {
+                    let detailsHtml = '<ul style="margin:0;padding-left:20px;">';
+                    if (typeof data.details === 'object' && !Array.isArray(data.details)) {
+                        for (let key in data.details) {
+                            detailsHtml += `<li>${data.details[key]}</li>`;
+                        }
+                    } else if (Array.isArray(data.details)) {
+                        data.details.forEach(d => detailsHtml += `<li>${d}</li>`);
+                    }
+                    detailsHtml += '</ul>';
+                    message = data.message + detailsHtml;
+                } else {
+                    message = data.message || '✅ Lettore tessere verificato!';
+                }
             } else if (deviceType === 'relay_controller') {
                 message = '✅ Test relè completato - Tutti i relè sono stati attivati in sequenza!';
+            }
+        } else {
+            // Mostra errori dettagliati se disponibili
+            if (data.details && Array.isArray(data.details)) {
+                message = data.message + '<br>' + data.details.join('<br>');
             }
         }
         
@@ -504,6 +589,17 @@ class SimpleHardwareManager {
             
             if (data.success && data.config) {
                 this.deviceAssignments = data.config.assignments || {};
+                
+                // Aggiungi valori di default se mancanti
+                if (this.deviceAssignments.relay_controller && !this.deviceAssignments.relay_controller.baudrate) {
+                    this.deviceAssignments.relay_controller.baudrate = 19200;
+                    console.log('Aggiunto baudrate default 19200 per relay controller');
+                }
+                if (this.deviceAssignments.card_reader && !this.deviceAssignments.card_reader.reader_type) {
+                    this.deviceAssignments.card_reader.reader_type = 'CRT285';
+                    console.log('Aggiunto reader_type default CRT285 per card reader');
+                }
+                
                 this.updateConfigurationDropdowns();
             }
         } catch (error) {

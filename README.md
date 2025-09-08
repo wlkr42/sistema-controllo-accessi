@@ -1,8 +1,15 @@
-# Sistema Controllo Accessi - v2.9.1
+# Sistema Controllo Accessi - v2.9.2
 
 Sistema completo per il controllo degli accessi tramite tessera sanitaria con gestione hardware, interfaccia web e funzionalità avanzate.
 
-## ✨ Ultime Novità (v2.9.1)
+## ✨ Ultime Novità (v2.9.2)
+
+- 📊 **Statistiche Sistema Real-Time**: Metriche live CPU, RAM, uptime in dashboard admin
+- 📝 **Console Debug Potenziata**: Visualizzazione estesa fino a 2000 righe di log
+- 🎨 **Dashboard Dinamica**: Aggiornamento automatico ogni 5 secondi delle metriche
+- 🔧 **Monitoraggio Sistema**: Integrazione psutil per metriche hardware accurate
+
+## ✨ Novità v2.9.1
 
 - 📧 **Configurazione Email SMTP**: Sistema completo per invio email con test integrato
 - 🏷️ **Nome Installazione Dinamico**: Tutte le email usano il nome configurato in sistema
@@ -102,10 +109,14 @@ Accedi a: `http://SERVER_IP:5000`
 
 ## 🔧 Requisiti Hardware
 
-- Lettore tessere **CRT-285** (USB)
-- Controller relè **USB-RLY08** (USB-Serial)
+- Lettore tessere **CRT-285** (USB diretto - NON richiede porta seriale)
+- Controller relè **USB-RLY08** (USB-Serial - richiede porta seriale es. /dev/ttyACM0)
 - Ubuntu Server 20.04+ o Debian 11+
 - 2GB RAM, 10GB disco
+
+### ⚠️ IMPORTANTE: Configurazione Hardware
+- **CRT-285**: Comunicazione USB diretta, NON configurare porta seriale
+- **USB-RLY08**: DEVE essere configurato con la porta seriale corretta (verificare con `ls /dev/tty*`)
 
 ## 🌳 Branch Structure
 

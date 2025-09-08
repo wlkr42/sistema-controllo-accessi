@@ -10,6 +10,54 @@ Il sistema utilizza session-based authentication. Dopo il login, viene impostato
 
 ---
 
+## 📊 System Monitoring Endpoints
+
+### GET `/api/system-status`
+Restituisce lo stato del sistema con metriche real-time.
+
+**Requires:** Admin permission
+
+**Response:**
+```json
+{
+  "success": true,
+  "service_running": true,
+  "reader_connected": true,
+  "reader_type": "CRT-285",
+  "relay_connected": true,
+  "database_ok": true,
+  "uptime": "2h 34m",
+  "ram_percent": 63.5,
+  "version": "v2.9.1",
+  "cpu_percent": 12.3
+}
+```
+
+**Fields:**
+- `uptime`: Tempo di attività formattato (s/m/h/g)
+- `ram_percent`: Percentuale RAM utilizzata (0-100)
+- `cpu_percent`: Percentuale CPU utilizzata (0-100)
+- `version`: Versione corrente del sistema
+
+### GET `/api/system-logs`
+Recupera i log di sistema.
+
+**Query Parameters:**
+- `lines` (int, optional): Numero di righe da recuperare (default: 30, max: 2000)
+
+**Response:**
+```json
+{
+  "success": true,
+  "logs": [
+    "Sep 08 16:37:24 python[846268]: INFO:werkzeug:192.168.1.73 - - [08/Sep/2025 16:37:24] \"GET /api/system-logs?lines=2000 HTTP/1.1\" 200 -",
+    "Sep 08 16:37:25 python[846268]: INFO:Access granted for user RSSMRA80A01H501Z"
+  ]
+}
+```
+
+---
+
 ## 🔐 Authentication Endpoints
 
 ### POST `/login`

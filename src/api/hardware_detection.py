@@ -287,25 +287,32 @@ def test_device_connection(device_info: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 def test_crt285_reader(device_path: str = None) -> bool:
-    """Test specifico per lettore CRT-285"""
+    """Test specifico per lettore CRT-285 - verifica solo presenza, NON inizializza (main.py già lo usa!)"""
     try:
-        # Importa e testa il lettore CRT-285
-        import sys
+        import subprocess
         import os
-        sys.path.insert(0, '/opt/access_control/src')
-        from hardware.crt285_reader import CRT285Reader
         
-        reader = CRT285Reader(
-            device_path=device_path,
-            auto_test=False,
-            strict_validation=False
-        )
+        # 1. Verifica che la libreria esista
+        lib_path = '/opt/access_control/lib/libCRT288x.so'
+        if not os.path.exists(lib_path):
+            logger.debug(f"Libreria CRT-285 non trovata: {lib_path}")
+            return False
         
-        # Verifica che la libreria sia caricata
-        if reader.lib:
-            reader.stop()
+        # 2. Verifica che il dispositivo USB sia presente
+        result = subprocess.run(['lsusb'], capture_output=True, text=True, timeout=2)
+        if '23d8:0285' not in result.stdout:
+            logger.debug("CRT-285 non rilevato via USB")
+            return False
+        
+        # 3. Verifica che main.py sia in esecuzione (significa che il lettore funziona)
+        ps_result = subprocess.run(['pgrep', '-f', 'main.py'], capture_output=True, timeout=2)
+        if ps_result.returncode == 0:
+            logger.info("CRT-285 già attivo in main.py - test OK")
             return True
-        return False
+        else:
+            logger.info("CRT-285 rilevato ma main.py non attivo")
+            return True  # Il lettore c'è comunque
+            
     except Exception as e:
         logger.debug(f"Test CRT-285 fallito: {e}")
         return False

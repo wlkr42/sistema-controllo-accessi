@@ -557,7 +557,7 @@ ADMIN_CONFIG_TEMPLATE = """
                 <div class="card stat-card">
                     <div class="card-body text-center">
                         <i class="fas fa-server fa-2x text-success mb-3"></i>
-                        <div class="stat-number text-success">Online</div>
+                        <div id="system-status" class="stat-number text-success">Online</div>
                         <h6 class="text-muted">Stato Sistema</h6>
                     </div>
                 </div>
@@ -566,7 +566,7 @@ ADMIN_CONFIG_TEMPLATE = """
                 <div class="card stat-card">
                     <div class="card-body text-center">
                         <i class="fas fa-code-branch fa-2x text-info mb-3"></i>
-                        <div class="stat-number text-info">v1.0.0</div>
+                        <div id="system-version" class="stat-number text-info">v1.0.0</div>
                         <h6 class="text-muted">Versione</h6>
                     </div>
                 </div>
@@ -575,7 +575,7 @@ ADMIN_CONFIG_TEMPLATE = """
                 <div class="card stat-card">
                     <div class="card-body text-center">
                         <i class="fas fa-clock fa-2x text-warning mb-3"></i>
-                        <div class="stat-number text-warning">24h</div>
+                        <div id="system-uptime" class="stat-number text-warning">--</div>
                         <h6 class="text-muted">Uptime</h6>
                     </div>
                 </div>
@@ -584,7 +584,7 @@ ADMIN_CONFIG_TEMPLATE = """
                 <div class="card stat-card">
                     <div class="card-body text-center">
                         <i class="fas fa-memory fa-2x text-primary mb-3"></i>
-                        <div class="stat-number text-primary">45%</div>
+                        <div id="system-ram" class="stat-number text-primary">--%</div>
                         <h6 class="text-muted">RAM Utilizzata</h6>
                     </div>
                 </div>
@@ -1124,8 +1124,8 @@ ADMIN_CONFIG_TEMPLATE = """
             logOutput.innerHTML = '<div class="text-info">Connessione al log...</div>';
             
             logInterval = setInterval(() => {
-                // Richiedi più righe se è in pausa per permettere l'ispezione
-                const numLines = isPaused ? 1000 : 100;
+                // Richiedi più righe per vedere tutto quello che succede
+                const numLines = 2000;  // Sempre 2000 righe per avere visibilità completa
                 fetch(`/api/system-logs?lines=${numLines}`)
                     .then(response => response.json())
                     .then(data => {
@@ -1502,7 +1502,55 @@ ADMIN_CONFIG_TEMPLATE = """
                 updateSystemTime();
                 setInterval(updateSystemTime, 1000);
             }
+            // Aggiorna statistiche sistema se siamo nella pagina admin/config
+            if (document.getElementById('system-uptime')) {
+                updateSystemStats();
+                setInterval(updateSystemStats, 5000); // Aggiorna ogni 5 secondi
+            }
         });
+        
+        // Funzione per aggiornare le statistiche di sistema
+        function updateSystemStats() {
+            fetch('/api/system-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Aggiorna stato
+                        const statusEl = document.getElementById('system-status');
+                        if (statusEl) {
+                            statusEl.textContent = data.service_running ? 'Online' : 'Offline';
+                            statusEl.className = data.service_running ? 'stat-number text-success' : 'stat-number text-danger';
+                        }
+                        
+                        // Aggiorna versione
+                        const versionEl = document.getElementById('system-version');
+                        if (versionEl && data.version) {
+                            versionEl.textContent = data.version;
+                        }
+                        
+                        // Aggiorna uptime
+                        const uptimeEl = document.getElementById('system-uptime');
+                        if (uptimeEl && data.uptime) {
+                            uptimeEl.textContent = data.uptime;
+                        }
+                        
+                        // Aggiorna RAM
+                        const ramEl = document.getElementById('system-ram');
+                        if (ramEl && data.ram_percent !== undefined) {
+                            ramEl.textContent = Math.round(data.ram_percent) + '%';
+                            // Cambia colore in base all'utilizzo
+                            if (data.ram_percent > 80) {
+                                ramEl.className = 'stat-number text-danger';
+                            } else if (data.ram_percent > 60) {
+                                ramEl.className = 'stat-number text-warning';
+                            } else {
+                                ramEl.className = 'stat-number text-primary';
+                            }
+                        }
+                    }
+                })
+                .catch(err => console.error('Errore aggiornamento stats sistema:', err));
+        }
         
         // Gestione Orologio
         function updateSystemTime() {

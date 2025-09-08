@@ -1524,12 +1524,43 @@ def api_system_logs():
 def api_system_status():
     """Restituisce lo stato del sistema"""
     try:
+        import psutil
+        from datetime import datetime
+        
+        # Calcola uptime del processo
+        process = psutil.Process(os.getpid())
+        create_time = datetime.fromtimestamp(process.create_time())
+        uptime_seconds = (datetime.now() - create_time).total_seconds()
+        
+        # Formatta uptime
+        if uptime_seconds < 60:
+            uptime_str = f"{int(uptime_seconds)}s"
+        elif uptime_seconds < 3600:
+            uptime_str = f"{int(uptime_seconds/60)}m"
+        elif uptime_seconds < 86400:
+            uptime_str = f"{int(uptime_seconds/3600)}h {int((uptime_seconds%3600)/60)}m"
+        else:
+            days = int(uptime_seconds/86400)
+            hours = int((uptime_seconds%86400)/3600)
+            uptime_str = f"{days}g {hours}h"
+        
+        # Ottieni utilizzo RAM
+        memory = psutil.virtual_memory()
+        ram_percent = memory.percent
+        
+        # Ottieni versione dal README o default
+        version = "v2.9.1"  # Versione corrente del sistema
+        
         status = {
             'service_running': True,  # Se risponde, è attivo
             'reader_connected': False,
             'reader_type': None,
             'relay_connected': False,
-            'database_ok': False
+            'database_ok': False,
+            'uptime': uptime_str,
+            'ram_percent': ram_percent,
+            'version': version,
+            'cpu_percent': psutil.cpu_percent(interval=0.1)
         }
         
         # Controlla lettore tessere

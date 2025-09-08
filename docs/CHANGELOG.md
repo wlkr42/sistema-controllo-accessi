@@ -1,5 +1,95 @@
 # Changelog - Sistema Controllo Accessi
 
+## [2.9.2] - 2025-09-08
+
+### 🔧 Miglioramenti Dashboard Admin
+
+#### 📊 Statistiche Sistema Real-Time
+- **Metriche Live nella pagina /admin/config**:
+  - Stato sistema dinamico (Online/Offline) con indicatore colorato
+  - Versione sistema aggiornata (v2.9.1)
+  - Uptime processo con formattazione intelligente (secondi/minuti/ore/giorni)
+  - Utilizzo RAM percentuale con codici colore dinamici:
+    - Blu: < 60% utilizzo
+    - Giallo: 60-80% utilizzo  
+    - Rosso: > 80% utilizzo
+  - CPU percent in tempo reale (bonus)
+  - Aggiornamento automatico ogni 5 secondi via AJAX
+
+#### 📝 Console Debug Potenziata
+- **Visualizzazione Log Estesa**:
+  - Limite aumentato da 100 a 2000 righe
+  - Stesso limite per modalità live e pausa
+  - Migliore visibilità eventi di sistema
+  - Scroll automatico ottimizzato
+
+### 🔧 Modifiche Tecniche
+- **Backend**:
+  - Modificato endpoint `/api/system-status` per fornire metriche reali
+  - Integrazione libreria `psutil` per monitoraggio sistema
+  - Calcolo uptime processo con formattazione intelligente
+  - Recupero metriche RAM e CPU in tempo reale
+
+- **Frontend**:
+  - Aggiunti ID univoci agli elementi HTML delle statistiche
+  - Nuova funzione JavaScript `updateSystemStats()`
+  - Polling automatico ogni 5 secondi per aggiornamenti
+  - Cambio colore dinamico basato su soglie RAM
+
+### 📁 File Modificati
+- `src/api/web_api.py`: Endpoint system-status con metriche reali
+- `src/api/dashboard_templates.py`: HTML con ID + JavaScript per update
+- `src/api/hardware_detection.py`: Miglioramenti rilevamento hardware
+- `src/api/hardware_tests.py`: Ottimizzazioni test hardware
+- `src/api/static/js/hardware-manager.js`: Fix gestione hardware
+
+## [2.9.1] - 2025-09-08
+
+### 📧 Sistema Email SMTP Completo
+- Configurazione SMTP completa con test integrato
+- Nome installazione dinamico in tutte le email
+- Bug fix salvataggio configurazione SMTP
+- API documentation completa per modulo email
+
+## [2.9.0] - 2025-09-07
+
+### 💾 Sistema Backup & Restore
+- Backup schedulati con verifica integrità MD5
+- Restore con validazione checksum
+- Schedulazione crontab configurabile da UI
+- Backup automatici configurabili
+
+## [2.8.1] - 2025-09-07
+
+### 🏷️ Nome Installazione Dinamico
+- Nome personalizzabile per ogni installazione
+- Utilizzato in email e report
+- Configurabile da interfaccia admin
+
+## [2.8.0] - 2025-09-07
+
+### 🎯 Test Accessi Avanzato
+- Sistema test accessi con selezione utente
+- Gestione ingressi extra per test
+- Simulazione completa ciclo autorizzazione
+- Report dettagliato test eseguiti
+
+## [2.7.1] - 2025-09-06
+
+### 🎨 UI Dashboard Migliorata
+- Rimosso pulsante Test Accessi ridondante
+- Colori uniformati per tutti i pulsanti
+- Pulizia codice e elementi UI non necessari
+
+## [2.7.0] - 2025-09-06
+
+### 👤 Sistema Profili Utente Avanzato
+- Profili utente estesi con avatar
+- Password management con validazione rigorosa
+- Reset password via email
+- Upload avatar con preview real-time
+- Campi profilo: nome, cognome, telefono, bio
+
 ## [2.6.0] - 2025-09-06
 
 ### 🔧 Refactoring Strutturale
