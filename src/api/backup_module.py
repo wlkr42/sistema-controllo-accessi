@@ -112,74 +112,28 @@ DEFAULT_CONFIG = {
 def download_backup(filename):
     """Download di un backup"""
     try:
-        # Debug log esteso
-        logging.info("=== DEBUG DOWNLOAD BACKUP ===")
-        logging.info(f"Filename richiesto: {filename}")
-        logging.info(f"Directory backup: {BACKUP_DIR}")
-        logging.info(f"Directory backup esiste: {BACKUP_DIR.exists()}")
-        logging.info(f"Directory backup è assoluta: {BACKUP_DIR.is_absolute()}")
-        logging.info(f"Percorso assoluto directory: {BACKUP_DIR.resolve()}")
-        logging.info(f"Contenuto directory:")
-        for f in BACKUP_DIR.glob("*"):
-            logging.info(f"- {f.name} ({f.stat().st_size} bytes)")
-            if f.name == filename:
-                logging.info(f"TROVATO FILE RICHIESTO!")
+        # Costruisci percorso file
+        file_path = BACKUP_DIR / filename
         
-        # Lista contenuto directory
-        if BACKUP_DIR.exists():
-            logging.info("Contenuto directory backup:")
-            for f in BACKUP_DIR.glob("*"):
-                logging.info(f"- {f.name} ({f.stat().st_size} bytes)")
-        
-        # Sanitizza il filename
-        from werkzeug.utils import secure_filename
-        safe_filename = secure_filename(filename)
-        logging.info(f"Filename sanitizzato: {safe_filename}")
-        
-        # Costruisci e verifica percorso file
-        file_path = BACKUP_DIR.resolve() / filename  # Use original filename instead of sanitized
-        logging.info(f"Percorso completo file: {file_path}")
-        logging.info(f"Percorso file è assoluto: {file_path.is_absolute()}")
-        logging.info(f"File esiste: {file_path.exists()}")
-        
-        # Verifica sicurezza percorso
+        # Verifica sicurezza percorso (previene path traversal)
         try:
             file_path.resolve().relative_to(BACKUP_DIR.resolve())
         except ValueError:
-            logging.error("Tentativo di path traversal rilevato")
             abort(403)
         
-        if not file_path.exists():
-            logging.error(f"File non trovato: {file_path}")
+        # Verifica che il file esista
+        if not file_path.exists() or not file_path.is_file():
             abort(404)
         
-        if not file_path.is_file():
-            logging.error(f"Il percorso non è un file: {file_path}")
-            abort(404)
-        
-        # Crea response con headers appropriati
-        from flask import make_response
-        
-        response = make_response(send_file(
+        # Invia il file per download
+        return send_file(
             str(file_path),
             as_attachment=True,
-            download_name=safe_filename,
-            mimetype='application/x-gzip' if filename.endswith('.tar.gz') else 'application/octet-stream'
-        ))
-        
-        # Imposta headers per gestire correttamente il download
-        response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        
-        logging.info("Response preparata con successo")
-        return response
+            download_name=filename
+        )
         
     except Exception as e:
-        logging.error(f"Errore download backup: {str(e)}")
-        logging.exception("Traceback completo:")
+        logging.error(f"Errore download backup {filename}: {str(e)}")
         abort(500)
 
 @backup_bp.route('/status')
