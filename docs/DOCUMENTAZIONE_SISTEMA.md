@@ -101,6 +101,33 @@ File: `/etc/systemd/system/access-control-web.service`
 
 ---
 
+## 🔧 INSTALLAZIONE SU NUOVO SISTEMA
+
+### Metodo Rapido (da GitHub)
+```bash
+# 1. Scarica script installazione
+cd /tmp
+wget https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/install_system.sh
+wget https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/setup_database.py
+wget https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/setup_drivers.sh
+wget https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/setup_services.sh
+wget https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/setup_permissions.sh
+chmod +x *.sh
+
+# 2. Esegui installazione (chiederà credenziali GitHub)
+sudo bash install_system.sh          # Per sviluppo
+sudo bash install_system.sh production  # Per produzione
+
+# 3. Verifica installazione
+bash verify_installation.sh
+```
+
+### Requisiti
+- Ubuntu 20.04+ / Debian 11+
+- Python 3.10+
+- Accesso GitHub (username e token per repo privato)
+- Hardware: CRT-288K e USB-RLY08 (opzionali)
+
 ## 🚀 AVVIO SISTEMA ENTERPRISE 24/7/365
 
 ### Configurazione Auto-Start all'avvio del sistema
