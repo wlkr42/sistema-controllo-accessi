@@ -5,9 +5,8 @@
 Questa directory contiene tutti gli script necessari per l'installazione completa del Sistema Controllo Accessi su un nuovo sistema.
 
 ### Script Principali
-- **`install_system.sh`** - Script installazione interattivo (chiede credenziali)
-- **`install_auto.sh`** - Script installazione automatica/configurabile
-- **`install_config.sh`** - File di configurazione per installazione automatica
+- **`install_system.sh`** - Script installazione principale
+- **`quick_install.sh`** - Download e installazione automatica one-liner
 
 ### Script di Supporto
 - **`setup_database.py`** - Inizializza il database con struttura e dati di default
@@ -18,32 +17,29 @@ Questa directory contiene tutti gli script necessari per l'installazione complet
 
 ## 🚀 Installazione Rapida
 
-### Metodo 1: Interattivo (chiede credenziali)
+### Metodo 1: One-Liner (Raccomandato)
 ```bash
-# Sviluppo (Flask dev server)
+# Download e installazione automatica
+curl -fsSL https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/quick_install.sh | sudo bash
+```
+
+### Metodo 2: Download Manuale
+```bash
+# 1. Scarica script
+wget https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/install_system.sh
+chmod +x install_system.sh
+
+# 2. Esegui (sviluppo)
 sudo bash install_system.sh
 
-# Produzione (Gunicorn WSGI)
+# 3. Oppure produzione
 sudo bash install_system.sh production
 ```
 
-### Metodo 2: Automatico con Config File
+### Metodo 3: Con Parametri
 ```bash
-# 1. Modifica install_config.sh con i tuoi parametri
-nano install_config.sh
-
-# 2. Esegui installazione
-source install_config.sh && sudo bash install_auto.sh
-```
-
-### Metodo 3: Automatico con Parametri
-```bash
-# Tutto in una riga
-sudo GITHUB_REPO="github.com/user/repo" \
-     GITHUB_USER="username" \
-     GITHUB_TOKEN="token" \
-     INSTALL_ENV="development" \
-     bash install_auto.sh
+# Passa credenziali via environment
+sudo GITHUB_USER="username" GITHUB_TOKEN="token" bash install_system.sh
 ```
 
 ## 🔧 Configurazione Repository GitHub
@@ -63,9 +59,6 @@ Prima di eseguire l'installazione, configurare il repository:
    sudo -E bash install_system.sh
    ```
 
-3. **Oppure usa install_config.sh:**
-   - Modifica il file con i tuoi parametri
-   - Source e lancia install_auto.sh
 
 ## 📋 Prerequisiti
 
