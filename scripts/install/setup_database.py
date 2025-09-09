@@ -13,6 +13,12 @@ from datetime import datetime
 def create_database(db_path):
     """Crea database con struttura completa"""
     
+    # Crea directory se non esiste
+    db_dir = os.path.dirname(db_path)
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+        print(f"✓ Creata directory: {db_dir}")
+    
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     

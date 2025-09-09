@@ -64,7 +64,7 @@ ExecStart=/bin/bash -c 'if [ "$FLASK_ENV" = "production" ] && [ -f "$PROJECT_ROO
         --log-level info \
         src.api.web_api:app; \
 else \
-    exec /usr/bin/python3 $PROJECT_ROOT/main.py; \
+    exec $PROJECT_ROOT/venv/bin/python $PROJECT_ROOT/src/main.py; \
 fi'
 
 # Restart policy

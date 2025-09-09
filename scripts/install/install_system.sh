@@ -316,7 +316,8 @@ echo ""
 
 log_info "Esecuzione script setup drivers..."
 if [ -f "$SCRIPT_DIR/setup_drivers.sh" ]; then
-    bash "$SCRIPT_DIR/setup_drivers.sh"
+    # Passa il path di installazione allo script
+    INSTALL_DIR="$INSTALL_DIR" bash "$SCRIPT_DIR/setup_drivers.sh"
 else
     log_warning "Script setup_drivers.sh non trovato, configurazione manuale richiesta"
 fi
@@ -355,6 +356,10 @@ echo "STEP 7: INIZIALIZZAZIONE DATABASE"
 echo "============================================================================"
 echo ""
 
+# Assicura che la directory data esista
+mkdir -p "$INSTALL_DIR/data"
+chmod 755 "$INSTALL_DIR/data"
+
 log_info "Inizializzazione database..."
 if [ -f "$SCRIPT_DIR/setup_database.py" ]; then
     python3 "$SCRIPT_DIR/setup_database.py" "$INSTALL_DIR/data/access_control.db"
@@ -368,7 +373,9 @@ import os
 from datetime import datetime
 import hashlib
 
-db_path = '/opt/access_control/data/access.db'
+# Assicura che la directory data esista
+os.makedirs('/opt/access_control/data', exist_ok=True)
+db_path = '/opt/access_control/data/access_control.db'
 
 # Crea connessione
 conn = sqlite3.connect(db_path)
@@ -497,8 +504,9 @@ CREATE INDEX IF NOT EXISTS idx_eventi_timestamp ON eventi_sistema(timestamp);
 
 # Inserisci dati iniziali
 
-# Admin user (password: admin123)
-admin_password = hashlib.sha256('admin123'.encode()).hexdigest()
+# Admin user (password: admin123) - usa bcrypt come il sistema reale
+import bcrypt
+admin_password = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 cursor.execute('''
     INSERT OR IGNORE INTO utenti_sistema (username, password, email, role, nome, cognome)
     VALUES (?, ?, ?, ?, ?, ?)
