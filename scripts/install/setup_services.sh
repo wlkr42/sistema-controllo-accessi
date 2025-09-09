@@ -7,7 +7,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+# PROJECT_ROOT è SEMPRE /opt/access_control su qualsiasi sistema
+PROJECT_ROOT="/opt/access_control"
 FLASK_ENV="${1:-development}"
 
 # Colori output
