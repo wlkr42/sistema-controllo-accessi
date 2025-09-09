@@ -171,14 +171,33 @@ Sistema integrato per il controllo degli accessi a un'isola ecologica mediante l
 
 ## 📦 Deployment
 
+### Installazione Automatica
+Il sistema include script di installazione completamente automatizzati:
+
+```bash
+# One-liner installation
+export GIT_USERNAME="your_username"
+export GIT_PASSWORD="your_token"
+curl -sL https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/main/scripts/install/install_system.sh | sudo bash -s production
+```
+
 ### Ambiente Produzione
 ```
-OS: Ubuntu Server 20.04 LTS
+OS: Ubuntu Server 20.04+ / Debian 11+
 Python: 3.10+
 Database: SQLite 3.31+
-Service: systemd (root per USB)
+Service: systemd (www-data con permessi hardware)
 Port: 5000 (configurabile)
+Path: /opt/access_control (fisso)
 ```
+
+### Script di Installazione
+- `install_system.sh`: Installer principale con retry HTTP2
+- `auto_install.sh`: Wrapper per deployment multipli
+- `setup_database.py`: Inizializzazione database
+- `setup_drivers.sh`: Installazione driver hardware
+- `setup_services.sh`: Configurazione systemd
+- `setup_permissions.sh`: Gestione permessi
 
 ### Requisiti Hardware
 - CPU: 2 core minimo

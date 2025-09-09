@@ -61,25 +61,43 @@ Sistema completo per il controllo degli accessi tramite tessera sanitaria con ge
 - ☁️ **Cloud Storage**: Supporto AWS S3, Google Cloud, Azure, FTP/SFTP
 - 📊 **Retention Policies**: Gestione automatica spazio e pulizia
 
-## 🚀 Quick Start
+## 🚀 Installazione Automatica
 
+### Metodo 1: One-liner (Raccomandato)
 ```bash
-# Clone repository
-cd /opt
-git clone https://github.com/wlkr42/sistema-controllo-accessi.git access_control
-cd access_control
-
-# Setup ambiente
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Inizializza database
-python3 scripts/init_database.py
-
-# Avvia servizio
-sudo systemctl start access-control-web
+# Installazione completa con un comando
+export GIT_USERNAME="your_github_username"
+export GIT_PASSWORD="your_github_token"
+curl -sL https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/main/scripts/install/install_system.sh | sudo bash -s production
 ```
+
+### Metodo 2: Clone e Installa
+```bash
+# Clone repository (richiede credenziali)
+git clone https://github.com/wlkr42/sistema-controllo-accessi.git /opt/access_control
+cd /opt/access_control
+
+# Esegui installazione automatica
+sudo bash scripts/install/install_system.sh production
+```
+
+### Metodo 3: Installazione Non Presidiata
+```bash
+# Per deployment multipli
+cd /opt/access_control
+export GIT_USERNAME="your_username"
+export GIT_PASSWORD="your_token"
+sudo bash scripts/install/auto_install.sh production
+```
+
+L'installazione automatica:
+- ✅ Installa tutte le dipendenze di sistema
+- ✅ Configura l'ambiente Python con venv
+- ✅ Inizializza il database
+- ✅ Installa i driver hardware (CRT-285, USB-RLY08)
+- ✅ Configura i servizi systemd
+- ✅ Imposta i permessi corretti
+- ✅ Avvia i servizi automaticamente
 
 ## 📋 Caratteristiche
 

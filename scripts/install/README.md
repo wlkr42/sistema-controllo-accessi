@@ -1,187 +1,200 @@
-# Sistema Controllo Accessi - Installazione
+# 📦 Sistema di Installazione Automatica
 
-## 📦 Contenuto Directory
+## 🎯 Panoramica
 
-Questa directory contiene tutti gli script necessari per l'installazione completa del Sistema Controllo Accessi su un nuovo sistema.
-
-### Script Principali
-- **`install_system.sh`** - Script installazione principale
-- **`quick_install.sh`** - Download e installazione automatica one-liner
-
-### Script di Supporto
-- **`setup_database.py`** - Inizializza il database con struttura e dati di default
-- **`setup_drivers.sh`** - Installa e configura i driver hardware (CRT-288K e USB-RLY08)
-- **`setup_services.sh`** - Configura servizi systemd, logrotate e cron jobs
-- **`setup_permissions.sh`** - Configura tutti i permessi file, directory e hardware
-- **`verify_installation.sh`** - Verifica completezza installazione
+Sistema di installazione completamente automatizzato per il deployment del Sistema Controllo Accessi RAEE su sistemi Ubuntu/Debian.
 
 ## 🚀 Installazione Rapida
 
-### Metodo 1: One-Liner (Raccomandato)
+### One-Liner Installation
 ```bash
-# Download e installazione automatica
-curl -fsSL https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/quick_install.sh | sudo bash
+export GIT_USERNAME="your_github_username"
+export GIT_PASSWORD="your_github_token"
+curl -sL https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/main/scripts/install/install_system.sh | sudo bash -s production
 ```
 
-### Metodo 2: Download Manuale
+## 📂 Struttura Script
+
+### `install_system.sh`
+Script principale di installazione che gestisce l'intero processo:
+- Verifica credenziali GitHub
+- Clona repository con retry automatico (HTTP2 fallback)
+- Installa dipendenze sistema
+- Configura ambiente Python
+- Inizializza database
+- Installa driver hardware
+- Configura servizi systemd
+- Avvia sistema
+
+### `auto_install.sh`
+Wrapper per installazioni non presidiate:
+- Gestione credenziali salvate
+- Deployment multipli
+- Logging automatico
+- Configurazione remota
+
+### `setup_database.py`
+Inizializzazione database SQLite:
+- Crea struttura tabelle
+- Inserisce dati iniziali
+- Configura utente admin
+- Imposta permessi
+
+### `setup_drivers.sh`
+Installazione driver hardware:
+- CRT-285 (lettore tessere)
+- USB-RLY08 (controller relè)
+- Regole udev
+- Permessi seriali
+
+### `setup_services.sh`
+Configurazione servizi sistema:
+- Servizio systemd principale
+- Monitor 24/7
+- Logrotate
+- Cron jobs backup
+
+### `setup_permissions.sh`
+Gestione permessi:
+- Utente servizio (www-data)
+- Gruppi hardware (dialout, tty)
+- Directory permessi
+- File sensibili
+
+### `verify_installation.sh`
+Verifica post-installazione:
+- Test connettività
+- Verifica servizi
+- Check hardware
+- Report finale
+
+## 🔧 Requisiti Sistema
+
+- **OS**: Ubuntu 20.04+ / Debian 11+
+- **Python**: 3.10+
+- **RAM**: Minimo 2GB
+- **Disco**: Minimo 10GB
+- **Rete**: Accesso GitHub
+
+## 📝 Variabili d'Ambiente
+
+| Variabile | Descrizione | Default |
+|-----------|-------------|---------|
+| `GIT_USERNAME` | Username GitHub | Richiesto |
+| `GIT_PASSWORD` | Token/Password GitHub | Richiesto |
+| `GITHUB_BRANCH` | Branch da installare | main |
+| `INSTALL_ENV` | Ambiente (development/production) | development |
+| `GITHUB_REPO` | Repository GitHub | github.com/wlkr42/sistema-controllo-accessi |
+
+## 🛠️ Modalità Installazione
+
+### Development
 ```bash
-# 1. Scarica script
-wget https://raw.githubusercontent.com/wlkr42/sistema-controllo-accessi/release/v3.0.0-RC1/scripts/install/install_system.sh
-chmod +x install_system.sh
-
-# 2. Esegui (sviluppo)
-sudo bash install_system.sh
-
-# 3. Oppure produzione
-sudo bash install_system.sh production
+sudo bash scripts/install/install_system.sh development
 ```
+- Flask development server
+- Debug abilitato
+- Hot reload
 
-### Metodo 3: Con Parametri
+### Production
 ```bash
-# Passa credenziali via environment
-sudo GITHUB_USER="username" GITHUB_TOKEN="token" bash install_system.sh
+sudo bash scripts/install/install_system.sh production
 ```
+- Gunicorn con workers
+- Ottimizzazioni performance
+- Logging production
 
-## 🔧 Configurazione Repository GitHub
+## 🔍 Troubleshooting
 
-Prima di eseguire l'installazione, configurare il repository:
+### Errore HTTP2
+Lo script gestisce automaticamente errori HTTP2 con fallback a HTTP/1.1
 
-1. **Repository di default:**
-   ```bash
-   # Lo script usa di default:
-   GITHUB_REPO="github.com/wlkr42/sistema-controllo-accessi"
-   ```
+### Credenziali con caratteri speciali
+Le credenziali vengono automaticamente URL-encoded
 
-2. **Per usare un fork o altro repository:**
-   ```bash
-   export GITHUB_REPO="github.com/tuo_username/tuo_fork"
-   export GITHUB_BRANCH="main"
-   sudo -E bash install_system.sh
-   ```
+### Database non trovato
+Lo script crea automaticamente `/opt/access_control/data/access_control.db`
 
+### Driver mancanti
+I driver `.so` sono inclusi nel repository in `src/drivers/288K/`
 
-## 📋 Prerequisiti
+## 📊 Log e Debug
 
-- Sistema operativo: Ubuntu 20.04+ / Debian 11+
-- Python 3.10 o superiore
-- Connessione internet attiva
-- Accesso root/sudo
-- Credenziali GitHub (per repository privato)
-
-## 🔧 Processo di Installazione
-
-L'installazione segue questi passi:
-
-1. **Verifica credenziali GitHub** - Richiede username e token per repository privato
-2. **Preparazione sistema** - Installa dipendenze sistema (python, git, sqlite3, etc.)
-3. **Clone repository** - Scarica codice sorgente da GitHub
-4. **Setup Python** - Crea virtual environment e installa dipendenze
-5. **Driver hardware** - Configura driver CRT-288K e USB-RLY08
-6. **Struttura directory** - Crea directory necessarie (data, logs, backups)
-7. **Database** - Inizializza database con struttura completa
-8. **Configurazione** - Crea file di configurazione
-9. **Servizi** - Installa e configura systemd, logrotate, cron
-10. **Test hardware** - Verifica presenza dispositivi
-11. **Avvio sistema** - Avvia servizi e verifica funzionamento
-
-## 🔌 Hardware Supportato
-
-### Lettore Tessere
-- **Modello**: CRT-288K / CRT-285
-- **USB ID**: 23d8:0285
-- **Documentazione**: `/src/drivers/288K/`
-
-### Controller Relè
-- **Modello**: USB-RLY08
-- **USB ID**: 04d8:ffee
-- **Canali**: 8 relè indipendenti
-
-## 📁 Struttura Post-Installazione
-
-```
-/opt/access_control/
-├── data/                 # Database SQLite
-├── logs/                 # File di log
-├── backups/              # Backup automatici
-├── config/               # File configurazione
-├── src/                  # Codice sorgente
-│   ├── api/             # API Flask
-│   ├── drivers/         # Driver hardware
-│   └── modules/         # Moduli sistema
-├── scripts/              # Script utilities
-│   ├── install/         # Script installazione
-│   └── system/          # Script sistema
-└── venv/                # Virtual environment Python
-```
-
-## 🔐 Credenziali Default
-
-- **Username**: admin
-- **Password**: admin123
-
-⚠️ **IMPORTANTE**: Cambiare la password al primo accesso!
-
-## 🛠️ Comandi Utili Post-Installazione
-
+### Log installazione
 ```bash
-# Stato servizi
+journalctl -u access-control-web -f
+```
+
+### Verifica servizi
+```bash
 systemctl status access-control-web
 systemctl status access-monitor
+```
 
-# Log real-time
-journalctl -fu access-control-web
-
-# Health check
+### Test manuale
+```bash
 curl http://localhost:5000/api/health
-
-# Restart sistema
-./restart.sh
-
-# Backup manuale
-python3 scripts/auto_backup.py complete
 ```
 
-## 🐛 Troubleshooting
+## 🔄 Aggiornamento
 
-### Servizio non si avvia
 ```bash
-# Verifica log
-journalctl -xeu access-control-web
-
-# Verifica porta 5000
-lsof -i :5000
-
-# Verifica database
-ls -la /opt/access_control/data/
+cd /opt/access_control
+git pull origin main
+sudo systemctl restart access-control-web
 ```
 
-### Hardware non rilevato
+## 🗑️ Disinstallazione
+
 ```bash
-# Lista dispositivi USB
-lsusb
+# Stop servizi
+sudo systemctl stop access-control-web
+sudo systemctl stop access-monitor
 
-# Verifica seriali
-ls -la /dev/ttyUSB* /dev/ttyACM*
+# Disabilita servizi
+sudo systemctl disable access-control-web
+sudo systemctl disable access-monitor
 
-# Ricarica udev
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
+# Rimuovi file servizio
+sudo rm /etc/systemd/system/access-control*.service
 
-### Permessi
-```bash
-# Aggiungi utente a gruppi
-sudo usermod -a -G dialout $USER
-sudo usermod -a -G tty $USER
+# Rimuovi installazione (opzionale - ATTENZIONE: cancella dati!)
+sudo rm -rf /opt/access_control
 ```
 
 ## 📞 Supporto
 
 Per problemi durante l'installazione:
-1. Verificare i log in `/opt/access_control/logs/`
-2. Controllare i requisiti di sistema
-3. Verificare connessione hardware
+1. Verifica i log: `journalctl -xe`
+2. Controlla connessione GitHub
+3. Verifica credenziali
+4. Apri issue su GitHub
 
-## 📄 Licenza
+## 🔒 Note Sicurezza
 
-Sistema proprietario - Tutti i diritti riservati
+- Le credenziali GitHub non vengono mai salvate in chiaro
+- Il database viene creato con permessi 644
+- I servizi girano come utente `www-data`
+- Le password sono hashate con bcrypt
+
+## 📈 Performance
+
+L'installazione completa richiede:
+- **Tempo**: 3-5 minuti (dipende dalla connessione)
+- **Banda**: ~100MB download
+- **CPU**: Minimo durante installazione
+- **RAM**: ~500MB durante setup
+
+## 🎯 Best Practices
+
+1. **Usa sempre token GitHub** invece della password
+2. **Esegui backup** prima di aggiornamenti
+3. **Testa in development** prima di production
+4. **Monitora i log** dopo l'installazione
+5. **Cambia password admin** dopo primo accesso
+
+---
+
+**Versione**: 3.0.0-RC1  
+**Ultimo Aggiornamento**: 2025-09-09  
+**Maintainer**: Sistema Controllo Accessi Team
