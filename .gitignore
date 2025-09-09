@@ -14,10 +14,11 @@ env/
 *.log
 logs/
 
-# Database
+# Database (ignora TRANNE quelli in data/ per installazione iniziale)
 *.db
 *.sqlite
 *.sqlite3
+!data/.gitkeep
 
 # IDE
 .vscode/
