@@ -10,6 +10,158 @@ import sqlite3
 import hashlib
 from datetime import datetime
 
+def ensure_all_tables(conn):
+    """Assicura che tutte le tabelle necessarie esistano"""
+    cursor = conn.cursor()
+    tables_created = []
+    
+    # Lista di tutte le tabelle necessarie con le loro query di creazione
+    tables = {
+        'users': '''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                email TEXT,
+                role TEXT DEFAULT 'user',
+                active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP,
+                reset_token TEXT,
+                reset_token_expiry TIMESTAMP
+            )
+        ''',
+        'utenti_sistema': '''
+            CREATE TABLE IF NOT EXISTS utenti_sistema (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                email TEXT,
+                role TEXT DEFAULT 'viewer',
+                attivo BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP,
+                must_change_password BOOLEAN DEFAULT 0,
+                failed_login_attempts INTEGER DEFAULT 0,
+                locked_until TIMESTAMP,
+                created_by TEXT,
+                modified_at TIMESTAMP,
+                modified_by TEXT,
+                nome TEXT,
+                cognome TEXT,
+                avatar_path TEXT,
+                telefono TEXT,
+                bio TEXT,
+                data_nascita DATE,
+                indirizzo TEXT
+            )
+        ''',
+        'tessere': '''
+            CREATE TABLE IF NOT EXISTS tessere (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                cognome TEXT NOT NULL,
+                codice_fiscale TEXT UNIQUE NOT NULL,
+                numero_tessera TEXT UNIQUE NOT NULL,
+                tipo_tessera TEXT DEFAULT 'standard',
+                data_emissione DATE,
+                data_scadenza DATE,
+                active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP
+            )
+        ''',
+        'accessi': '''
+            CREATE TABLE IF NOT EXISTS accessi (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tessera_id INTEGER,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                direzione TEXT CHECK(direzione IN ('ingresso', 'uscita')),
+                varco INTEGER DEFAULT 1,
+                esito TEXT DEFAULT 'autorizzato',
+                note TEXT,
+                FOREIGN KEY (tessera_id) REFERENCES tessere(id)
+            )
+        ''',
+        'sistema_config': '''
+            CREATE TABLE IF NOT EXISTS sistema_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chiave TEXT UNIQUE NOT NULL,
+                valore TEXT,
+                tipo TEXT DEFAULT 'string',
+                descrizione TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''',
+        'utenti_autorizzati': '''
+            CREATE TABLE IF NOT EXISTS utenti_autorizzati (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                codice_fiscale TEXT UNIQUE NOT NULL,
+                nome TEXT NOT NULL,
+                email TEXT,
+                telefono TEXT,
+                attivo BOOLEAN DEFAULT 1,
+                gruppi TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP,
+                created_by TEXT,
+                updated_by TEXT
+            )
+        ''',
+        'log_accessi': '''
+            CREATE TABLE IF NOT EXISTS log_accessi (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                codice_fiscale TEXT NOT NULL,
+                autorizzato BOOLEAN,
+                durata_elaborazione REAL,
+                terminale_id TEXT,
+                nome_utente TEXT,
+                motivo_rifiuto TEXT,
+                tipo_accesso TEXT
+            )
+        ''',
+        'relay_config': '''
+            CREATE TABLE IF NOT EXISTS relay_config (
+                relay_id INTEGER PRIMARY KEY,
+                nome TEXT,
+                descrizione TEXT,
+                azione_accesso_valido TEXT DEFAULT 'pulse',
+                durata_impulso_valido INTEGER DEFAULT 3,
+                azione_accesso_invalido TEXT DEFAULT 'off',
+                durata_impulso_invalido INTEGER DEFAULT 0,
+                attivo BOOLEAN DEFAULT 1
+            )
+        ''',
+        'eventi_sistema': '''
+            CREATE TABLE IF NOT EXISTS eventi_sistema (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                tipo_evento TEXT,
+                livello TEXT,
+                messaggio TEXT,
+                componente TEXT,
+                utente TEXT
+            )
+        '''
+    }
+    
+    # Crea tutte le tabelle
+    for table_name, create_query in tables.items():
+        cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
+        if not cursor.fetchone():
+            cursor.execute(create_query)
+            tables_created.append(table_name)
+            print(f"  ✓ Tabella '{table_name}' creata")
+    
+    # Crea indici per performance
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_tessere_codice ON tessere(codice_fiscale)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_accessi_timestamp ON accessi(timestamp)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_log_timestamp ON log_accessi(timestamp)')
+    
+    conn.commit()
+    return tables_created
+
 def create_database(db_path):
     """Crea database con struttura completa"""
     
@@ -381,6 +533,92 @@ def create_database(db_path):
     print(f"✓ Database creato: {db_path}")
     return True
 
+def verify_and_fix_database(db_path):
+    """Verifica database esistente e sistema eventuali problemi"""
+    conn = sqlite3.connect(db_path)
+    
+    try:
+        # Assicura che tutte le tabelle esistano
+        print("📋 Verifica struttura database...")
+        tables_created = ensure_all_tables(conn)
+        
+        if tables_created:
+            print(f"  ⚠️ Create {len(tables_created)} tabelle mancanti")
+        else:
+            print("  ✓ Tutte le tabelle sono presenti")
+        
+        cursor = conn.cursor()
+        
+        # Verifica se esiste utente admin
+        cursor.execute("SELECT COUNT(*) FROM utenti_sistema WHERE username = 'admin'")
+        admin_exists = cursor.fetchone()[0] > 0
+        
+        if not admin_exists:
+            print("⚠️ Utente admin mancante, lo creo...")
+            admin_password = hashlib.sha256('admin123'.encode()).hexdigest()
+            
+            # Inserisce admin in utenti_sistema
+            cursor.execute('''
+            INSERT INTO utenti_sistema (username, password, email, role, nome, cognome, attivo)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('admin', admin_password, 'admin@sistema.local', 'admin', 'Admin', 'Sistema', 1))
+            
+            # Inserisce anche in users per compatibilità
+            cursor.execute('''
+            INSERT OR IGNORE INTO users (username, password_hash, email, role, active)
+            VALUES (?, ?, ?, ?, ?)
+            ''', ('admin', admin_password, 'admin@sistema.local', 'admin', 1))
+            
+            conn.commit()
+            print("  ✅ Utente admin creato con successo")
+        else:
+            print("  ✓ Utente admin già presente")
+        
+        # Inserisce configurazioni di default se mancanti
+        cursor.execute("SELECT COUNT(*) FROM sistema_config")
+        config_count = cursor.fetchone()[0]
+        
+        if config_count == 0:
+            print("⚠️ Configurazioni mancanti, inserisco valori di default...")
+            default_configs = [
+                ('nome_installazione', 'Sistema Controllo Accessi', 'string', 'Nome del sistema'),
+                ('versione', '3.0.0-RC1', 'string', 'Versione del sistema'),
+                ('modalita_debug', '0', 'boolean', 'Modalità debug'),
+                ('tempo_apertura_varco', '3', 'integer', 'Tempo apertura varco in secondi')
+            ]
+            
+            for chiave, valore, tipo, desc in default_configs:
+                cursor.execute('''
+                INSERT OR IGNORE INTO sistema_config (chiave, valore, tipo, descrizione)
+                VALUES (?, ?, ?, ?)
+                ''', (chiave, valore, tipo, desc))
+            
+            conn.commit()
+            print("  ✅ Configurazioni di default inserite")
+        
+        # Inserisce configurazione relè se mancante
+        cursor.execute("SELECT COUNT(*) FROM relay_config")
+        relay_count = cursor.fetchone()[0]
+        
+        if relay_count == 0:
+            print("⚠️ Configurazione relè mancante, inserisco default...")
+            for i in range(1, 9):
+                cursor.execute('''
+                INSERT OR IGNORE INTO relay_config (relay_id, nome, descrizione, attivo)
+                VALUES (?, ?, ?, ?)
+                ''', (i, f'Relè {i}', f'Canale relè {i}', 1 if i == 1 else 0))
+            
+            conn.commit()
+            print("  ✅ Configurazione relè inserita")
+        
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"❌ Errore durante verifica database: {e}")
+        conn.close()
+        return False
+
 def main():
     """Main function"""
     
@@ -397,13 +635,24 @@ def main():
         os.makedirs(db_dir, exist_ok=True)
         print(f"✓ Directory creata: {db_dir}")
     
-    # Backup database esistente se presente
+    # Se database esiste, verifica e sistema
     if os.path.exists(db_path):
-        backup_path = f"{db_path}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        os.rename(db_path, backup_path)
-        print(f"✓ Backup database esistente: {backup_path}")
+        print(f"\n📄 Database esistente trovato: {db_path}")
+        if verify_and_fix_database(db_path):
+            print("\n✅ Database verificato e sistemato!")
+            print(f"   Path: {db_path}")
+            print(f"   User: admin")
+            print(f"   Pass: admin123")
+            return 0
+        else:
+            # Se verifica fallisce completamente, ricrea database
+            print("\n⚠️ Database corrotto, lo ricreo da zero...")
+            backup_path = f"{db_path}.corrupted.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            os.rename(db_path, backup_path)
+            print(f"✓ Backup database corrotto: {backup_path}")
     
-    # Crea nuovo database
+    # Crea nuovo database da zero
+    print("\n🔨 Creazione nuovo database...")
     if create_database(db_path):
         print("\n✅ Database inizializzato con successo!")
         print(f"   Path: {db_path}")
