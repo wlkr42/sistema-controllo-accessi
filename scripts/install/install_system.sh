@@ -8,6 +8,11 @@
 
 set -e  # Exit on error
 
+# Assicura che le variabili di ambiente essenziali siano definite
+export HOME=${HOME:-/root}
+export USER=${USER:-root}
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 # Colori per output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -62,20 +67,50 @@ if [ "$INSTALL_ENV" != "development" ] && [ "$INSTALL_ENV" != "production" ]; th
     log_error "Ambiente non valido. Usa: $0 [development|production]"
 fi
 
+# Funzione per URL encoding
+urlencode() {
+    local string="${1}"
+    local strlen=${#string}
+    local encoded=""
+    local pos c o
+
+    for (( pos=0 ; pos<strlen ; pos++ )); do
+        c=${string:$pos:1}
+        case "$c" in
+            [-_.~a-zA-Z0-9] ) o="${c}" ;;
+            * ) printf -v o '%%%02x' "'$c" ;;
+        esac
+        encoded+="${o}"
+    done
+    echo "${encoded}"
+}
+
 # 1. RICHIESTA CREDENZIALI GITHUB
 echo "============================================================================"
 echo "STEP 1: CREDENZIALI GITHUB"
 echo "============================================================================"
 echo ""
-echo "Il repository è privato. Inserire le credenziali GitHub:"
-echo ""
 
-read -p "GitHub Username: " GITHUB_USER
-read -s -p "GitHub Password/Token: " GITHUB_TOKEN
-echo ""
-echo ""
+# Controlla se le credenziali sono già fornite tramite variabili d'ambiente
+if [ -n "$GIT_USERNAME" ] && [ -n "$GIT_PASSWORD" ]; then
+    log_info "Uso credenziali da variabili d'ambiente"
+    GITHUB_USER="$GIT_USERNAME"
+    GITHUB_TOKEN="$GIT_PASSWORD"
+else
+    echo "Il repository è privato. Inserire le credenziali GitHub:"
+    echo ""
+    read -p "GitHub Username: " GITHUB_USER
+    read -s -p "GitHub Password/Token: " GITHUB_TOKEN
+    echo ""
+    echo ""
+fi
 
-# Test credenziali
+# URL encode delle credenziali per gestire caratteri speciali
+log_info "Elaborazione credenziali..."
+ENCODED_USER=$(urlencode "$GITHUB_USER")
+ENCODED_TOKEN=$(urlencode "$GITHUB_TOKEN")
+
+# Test credenziali con le credenziali originali (non encoded)
 log_info "Verifica credenziali GitHub..."
 if curl -s -u "${GITHUB_USER}:${GITHUB_TOKEN}" https://api.github.com/user > /dev/null 2>&1; then
     log_success "Credenziali GitHub valide"
@@ -117,6 +152,93 @@ apt-get install -y -qq \
 
 log_success "Dipendenze sistema installate"
 
+# Funzione per clone con retry e fallback
+clone_with_retry() {
+    local url="$1"
+    local dest="$2"
+    local branch="$3"
+    local max_attempts=3
+    local attempt=1
+    
+    # Crea directory temporanea per Git config se necessario
+    local git_config_dir="/tmp/git_config_$$"
+    mkdir -p "$git_config_dir"
+    export GIT_CONFIG_GLOBAL="$git_config_dir/.gitconfig"
+    
+    while [ $attempt -le $max_attempts ]; do
+        log_info "Tentativo clone $attempt di $max_attempts..."
+        
+        # Pulisci directory se esiste da tentativo precedente
+        [ -d "$dest" ] && rm -rf "$dest"
+        
+        # Prova metodi diversi basati sul numero di tentativo
+        if [ $attempt -eq 1 ]; then
+            # Primo tentativo: normale
+            log_info "Metodo: Clone standard HTTPS"
+            if git clone -b "$branch" "$url" "$dest" 2>&1; then
+                log_success "Clone completato con metodo standard"
+                rm -rf "$git_config_dir"
+                return 0
+            fi
+        elif [ $attempt -eq 2 ]; then
+            # Secondo tentativo: HTTP/1.1 con configurazioni inline
+            log_info "Metodo: HTTP/1.1 (fix per errori HTTP2)"
+            if GIT_CURL_VERBOSE=0 \
+               git -c http.version=HTTP/1.1 \
+                   -c http.postBuffer=524288000 \
+                   -c http.lowSpeedLimit=0 \
+                   -c http.lowSpeedTime=999999 \
+                   clone -b "$branch" "$url" "$dest" 2>&1; then
+                log_success "Clone completato con HTTP/1.1"
+                rm -rf "$git_config_dir"
+                return 0
+            fi
+        else
+            # Terzo tentativo: shallow clone
+            log_info "Metodo: Shallow clone (minimo trasferimento dati)"
+            if GIT_CURL_VERBOSE=0 \
+               git -c http.version=HTTP/1.1 \
+                   -c http.postBuffer=524288000 \
+                   -c core.compression=0 \
+                   clone --depth 1 -b "$branch" "$url" "$dest" 2>&1; then
+                log_success "Clone completato con shallow clone"
+                rm -rf "$git_config_dir"
+                return 0
+            fi
+        fi
+        
+        log_warning "Tentativo $attempt fallito"
+        if [ $attempt -lt $max_attempts ]; then
+            log_info "Attesa 10 secondi prima del prossimo tentativo..."
+            sleep 10
+        fi
+        ((attempt++))
+    done
+    
+    # Cleanup
+    rm -rf "$git_config_dir"
+    return 1
+}
+
+# Funzione di verifica connettività GitHub
+check_github_connectivity() {
+    log_info "Verifica connettività GitHub..."
+    
+    # Test connessione base
+    if ! ping -c 1 github.com >/dev/null 2>&1; then
+        log_warning "GitHub non raggiungibile via ping (potrebbe essere normale)"
+    fi
+    
+    # Test HTTPS
+    if curl -s -o /dev/null -w "%{http_code}" https://github.com 2>/dev/null | grep -q "200\|301"; then
+        log_success "Connessione HTTPS a GitHub: OK"
+        return 0
+    else
+        log_error "Impossibile connettersi a GitHub via HTTPS"
+        return 1
+    fi
+}
+
 # 3. CLONE REPOSITORY
 echo "============================================================================"
 echo "STEP 3: DOWNLOAD CODICE SORGENTE"
@@ -129,11 +251,34 @@ if [ -d "$INSTALL_DIR" ]; then
     mv "$INSTALL_DIR" "${INSTALL_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
 fi
 
-log_info "Clone repository da GitHub..."
-git clone -b "$BRANCH" "https://${GITHUB_USER}:${GITHUB_TOKEN}@${GITHUB_REPO}.git" "$INSTALL_DIR"
+# Verifica connettività prima di procedere
+if ! check_github_connectivity; then
+    log_error "Problemi di connettività con GitHub. Verificare la connessione internet."
+    exit 1
+fi
 
-cd "$INSTALL_DIR"
-log_success "Repository clonato con successo"
+# Clone con retry
+log_info "Avvio clone repository da GitHub..."
+CLONE_URL="https://${ENCODED_USER}:${ENCODED_TOKEN}@${GITHUB_REPO}.git"
+
+if clone_with_retry "$CLONE_URL" "$INSTALL_DIR" "$BRANCH"; then
+    cd "$INSTALL_DIR"
+    log_success "Repository clonato con successo"
+    
+    # Verifica clone
+    if [ -f "requirements.txt" ]; then
+        log_success "Verifica repository: OK (requirements.txt presente)"
+    else
+        log_warning "Verifica repository: file requirements.txt non trovato"
+    fi
+else
+    log_error "Impossibile clonare repository dopo 3 tentativi. Verificare:"
+    echo "  1. Connessione internet stabile"
+    echo "  2. Credenziali GitHub corrette"
+    echo "  3. Repository accessibile: https://github.com/wlkr42/sistema-controllo-accessi"
+    echo "  4. Firewall/proxy non bloccano GitHub"
+    exit 1
+fi
 
 # 4. SETUP PYTHON ENVIRONMENT
 echo "============================================================================"
@@ -419,8 +564,9 @@ conn.close()
 print("Database inizializzato con successo")
 EOF
 
-python3 /tmp/init_database.py
-rm /tmp/init_database.py
+    python3 /tmp/init_database.py
+    rm /tmp/init_database.py
+fi
 
 log_success "Database inizializzato"
 

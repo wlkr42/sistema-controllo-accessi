@@ -7,7 +7,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+# Fix: usa sempre /opt/access_control come PROJECT_ROOT durante installazione
+PROJECT_ROOT="/opt/access_control"
 DRIVERS_DIR="$PROJECT_ROOT/src/drivers"
 
 # Colori output
@@ -24,23 +25,35 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 install_crt288k() {
     log_info "Installazione driver CRT-288K..."
     
-    # Verifica esistenza documentazione driver
+    # Verifica esistenza driver e installa
     if [ -d "$DRIVERS_DIR/288K" ]; then
-        log_info "Trovata documentazione driver in $DRIVERS_DIR/288K"
+        log_info "Trovato driver 288K in $DRIVERS_DIR/288K"
         
-        # Copia librerie se presenti
-        if [ -f "$DRIVERS_DIR/288K/libcrt_288_k.so" ]; then
-            sudo cp "$DRIVERS_DIR/288K/libcrt_288_k.so" /usr/local/lib/
-            sudo ldconfig
-            log_info "✓ Libreria CRT-288K installata"
+        # Installa librerie dal path corretto
+        if [ -d "$DRIVERS_DIR/288K/linux_crt_288x/drivers/x64" ]; then
+            log_info "Installazione librerie CRT-288K..."
+            # Copia la libreria nella directory corretta
+            if [ -f "$DRIVERS_DIR/288K/linux_crt_288x/drivers/x64/crt_288x_ur.so" ]; then
+                sudo cp "$DRIVERS_DIR/288K/linux_crt_288x/drivers/x64/crt_288x_ur.so" /usr/local/lib/
+                sudo ldconfig
+                log_info "✓ Libreria crt_288x_ur.so installata"
+            fi
+        fi
+        
+        # Esegui script di verifica se presente
+        if [ -f "$DRIVERS_DIR/288K/install/verifica_288x.sh" ]; then
+            log_info "Esecuzione script verifica driver..."
+            bash "$DRIVERS_DIR/288K/install/verifica_288x.sh" || true
         fi
         
         # Installa dipendenze Python per driver
         pip3 install pyserial 2>/dev/null || true
+        log_info "✓ Driver CRT-288K configurato"
         
     else
-        log_warn "Documentazione driver 288K non trovata in $DRIVERS_DIR/288K"
-        log_info "Il driver dovrà essere configurato manualmente"
+        log_warn "Driver 288K non trovato in $DRIVERS_DIR/288K"
+        log_error "Path atteso: /opt/access_control/src/drivers/288K"
+        log_info "Verificare che il repository sia stato clonato correttamente"
     fi
     
     # Crea regole udev per lettore tessere
