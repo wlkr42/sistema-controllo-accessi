@@ -94,7 +94,7 @@ L'installer automatico esegue:
    - Gruppi utente (dialout, tty)
 
 4. **Setup Database**
-   - Crea `/opt/access_control/data/access_control.db`
+   - Crea `/opt/access_control/data/access.db`
    - Inizializza schema tabelle
    - Crea utente admin (admin/admin123)
 
@@ -154,7 +154,7 @@ python3 /opt/access_control/src/hardware/test_reader.py
 ```bash
 # Crea manualmente il database
 mkdir -p /opt/access_control/data
-python3 /opt/access_control/scripts/install/setup_database.py /opt/access_control/data/access_control.db
+python3 /opt/access_control/scripts/install/setup_database.py /opt/access_control/data/access.db
 ```
 
 ### Errore: "HTTP2 framing layer"

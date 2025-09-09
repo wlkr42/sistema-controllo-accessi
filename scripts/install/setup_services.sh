@@ -44,7 +44,7 @@ Environment="FLASK_APP=src.api.web_api:app"
 Environment="FLASK_ENV=$FLASK_ENV"
 
 # Pre-check database
-ExecStartPre=/bin/bash -c 'if [ ! -f "$PROJECT_ROOT/data/access_control.db" ]; then echo "Database not found!"; exit 1; fi'
+ExecStartPre=/bin/bash -c 'if [ ! -f "$PROJECT_ROOT/data/access.db" ]; then echo "Database not found!"; exit 1; fi'
 
 # Kill processo su porta se esiste
 ExecStartPre=/bin/bash -c 'fuser -k 5000/tcp || true'

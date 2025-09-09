@@ -296,12 +296,22 @@ class AccessControlSystem:
                 time.sleep(1)
                 self.usb_relay_controller.set_area_lighting(False)
             
-            # CardReader
-            card_cfg = config_manager.get_hardware_assignment("card_reader")
-            card_device_key = card_cfg.get("device_key", None)
-            card_device_path = card_cfg.get("device_path", None)
-            self.card_reader = ReaderFactory.create_reader_by_key(device_key=card_device_key, device_path=card_device_path)
-            logger.info(f"✅ Lettore inizializzato: {self.card_reader.__class__.__name__ if self.card_reader else 'Nessun lettore'}")
+            # CardReader - con gestione errori
+            try:
+                card_cfg = config_manager.get_hardware_assignment("card_reader")
+                card_device_key = card_cfg.get("device_key", None)
+                card_device_path = card_cfg.get("device_path", None)
+                self.card_reader = ReaderFactory.create_reader_by_key(device_key=card_device_key, device_path=card_device_path)
+                if self.card_reader:
+                    logger.info(f"✅ Lettore inizializzato: {self.card_reader.__class__.__name__}")
+                else:
+                    logger.warning("⚠️ Nessun lettore tessere disponibile - sistema continuerà senza")
+                    print("⚠️ Lettore tessere non disponibile - modalità solo WEB")
+            except Exception as e:
+                logger.warning(f"⚠️ Impossibile inizializzare lettore: {e}")
+                print(f"⚠️ Lettore tessere non disponibile: {e}")
+                print("   Sistema continuerà in modalità solo WEB")
+                self.card_reader = None
             
             # Database - usa il percorso dalla configurazione centralizzata
             from core.db_config import CURRENT_DB_PATH
@@ -644,8 +654,24 @@ class AccessControlSystem:
                 self.usb_relay_controller.set_area_lighting(True)
                 print("💡 Illuminazione area RAEE attivata")
             
-            # Avvia CardReader
-            self.card_reader.start_continuous_reading(self.handle_cf)
+            # Avvia CardReader solo se presente
+            if self.card_reader:
+                try:
+                    self.card_reader.start_continuous_reading(self.handle_cf)
+                except Exception as e:
+                    logger.warning(f"⚠️ Lettore tessere non disponibile: {e}")
+                    print(f"⚠️ ATTENZIONE: Sistema avviato senza lettore tessere")
+                    print(f"   Il sistema web è comunque accessibile su porta 5000")
+                    # Continua comunque senza lettore
+                    while self.running:
+                        time.sleep(1)
+            else:
+                logger.warning("⚠️ Nessun lettore tessere configurato")
+                print("⚠️ Sistema avviato in modalità solo WEB (senza lettore tessere)")
+                print("   Accedere via browser su http://localhost:5000")
+                # Mantieni il sistema attivo anche senza lettore
+                while self.running:
+                    time.sleep(1)
             
         except KeyboardInterrupt:
             print("\n⏹️ Arresto richiesto")

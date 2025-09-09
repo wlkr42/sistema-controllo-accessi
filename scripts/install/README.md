@@ -113,7 +113,7 @@ Lo script gestisce automaticamente errori HTTP2 con fallback a HTTP/1.1
 Le credenziali vengono automaticamente URL-encoded
 
 ### Database non trovato
-Lo script crea automaticamente `/opt/access_control/data/access_control.db`
+Lo script crea automaticamente `/opt/access_control/data/access.db`
 
 ### Driver mancanti
 I driver `.so` sono inclusi nel repository in `src/drivers/288K/`

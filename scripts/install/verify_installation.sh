@@ -64,8 +64,8 @@ echo "2. DATABASE"
 echo "-----------"
 # Cerca database con nomi possibili
 DB_PATH=""
-if [ -f "/opt/access_control/data/access_control.db" ]; then
-    DB_PATH="/opt/access_control/data/access_control.db"
+if [ -f "/opt/access_control/data/access.db" ]; then
+    DB_PATH="/opt/access_control/data/access.db"
 elif [ -f "/opt/access_control/data/access.db" ]; then
     DB_PATH="/opt/access_control/data/access.db"
 fi

@@ -362,7 +362,7 @@ chmod 755 "$INSTALL_DIR/data"
 
 log_info "Inizializzazione database..."
 if [ -f "$SCRIPT_DIR/setup_database.py" ]; then
-    python3 "$SCRIPT_DIR/setup_database.py" "$INSTALL_DIR/data/access_control.db"
+    python3 "$SCRIPT_DIR/setup_database.py" "$INSTALL_DIR/data/access.db"
 else
     log_warning "Script setup_database.py non trovato, creazione database manuale"
     # Fallback: crea script temporaneo
@@ -375,7 +375,7 @@ import hashlib
 
 # Assicura che la directory data esista
 os.makedirs('/opt/access_control/data', exist_ok=True)
-db_path = '/opt/access_control/data/access_control.db'
+db_path = '/opt/access_control/data/access.db'
 
 # Crea connessione
 conn = sqlite3.connect(db_path)

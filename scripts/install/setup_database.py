@@ -623,7 +623,7 @@ def main():
     """Main function"""
     
     # Path database di default
-    db_path = '/opt/access_control/data/access_control.db'
+    db_path = '/opt/access_control/data/access.db'
     
     # Se passato come parametro usa quello
     if len(sys.argv) > 1:
