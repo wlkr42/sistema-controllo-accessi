@@ -56,20 +56,29 @@ install_crt288k() {
         log_info "Verificare che il repository sia stato clonato correttamente"
     fi
     
-    # Crea regole udev per lettore tessere
-    cat > /tmp/99-card-reader.rules << 'EOF'
-# Regole udev per lettore tessere CRT-288K/285
-# Permessi per dispositivi seriali USB
-SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", MODE="0666", GROUP="dialout"
-SUBSYSTEM=="tty", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", MODE="0666", GROUP="dialout"
-SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE="0666", GROUP="dialout"
+    # Crea regole udev per lettore tessere CRT-285
+    cat > /tmp/99-crt285.rules << 'EOF'
+# CRT-285 Card Reader - USB HID Direct Access
+# IMPORTANTE: Il CRT-285 usa comunicazione USB diretta, NON porta seriale
+SUBSYSTEM=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", MODE="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", OWNER="root", GROUP="plugdev"
 
-# Alias per lettore tessere
-SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="card_reader"
+# CRITICO: Previeni binding automatico driver kernel che causa disconnessioni continue
+# Questo risolve il problema del dispositivo che si disconnette ogni 7 secondi
+SUBSYSTEM=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", RUN+="/bin/sh -c 'echo -n $kernel > /sys/bus/usb/drivers/usb/unbind'"
+
+# Tag per accesso utente
+SUBSYSTEM=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", TAG+="uaccess"
 EOF
     
-    sudo mv /tmp/99-card-reader.rules /etc/udev/rules.d/
-    log_info "✓ Regole udev per lettore tessere create"
+    sudo mv /tmp/99-crt285.rules /etc/udev/rules.d/
+    log_info "✓ Regole udev per CRT-285 create con fix disconnessione"
+    
+    # Fix permessi libreria driver
+    if [ -f "$DRIVERS_DIR/288K/linux_crt_288x/drivers/x64/crt_288x_ur.so" ]; then
+        sudo chmod 755 "$DRIVERS_DIR/288K/linux_crt_288x/drivers/x64/crt_288x_ur.so"
+        log_info "✓ Permessi libreria driver corretti"
+    fi
 }
 
 # Installa driver USB-RLY08
@@ -78,13 +87,20 @@ install_usbrly08() {
     
     # Crea regole udev per relay controller
     cat > /tmp/99-usb-relay.rules << 'EOF'
-# Regole udev per USB-RLY08
-# Devantech USB-RLY08 relay controller
+# USB-RLY08 Relay Controller (e altri dispositivi su ACM)
+# Il relè USB-RLY08 si presenta come porta seriale ACM
+SUBSYSTEM=="tty", ATTRS{idVendor}=="04d8", MODE="0666", GROUP="dialout"
+KERNEL=="ttyACM[0-9]*", MODE="0666", GROUP="dialout"
+
+# Supporto per vari modelli Devantech
 SUBSYSTEM=="tty", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="ffee", MODE="0666", GROUP="dialout"
 SUBSYSTEM=="usb", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="ffee", MODE="0666", GROUP="dialout"
 
-# Alias per relay controller
-SUBSYSTEM=="tty", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="ffee", SYMLINK+="relay_controller"
+# USB-ISS (altro modello comune)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="ffef", MODE="0666", GROUP="dialout"
+
+# Alias per facile identificazione
+SUBSYSTEM=="tty", ATTRS{idVendor}=="04d8", SYMLINK+="relay_controller"
 EOF
     
     sudo mv /tmp/99-usb-relay.rules /etc/udev/rules.d/
@@ -115,23 +131,70 @@ setup_serial_permissions() {
 test_hardware() {
     log_info "Test connessione hardware..."
     
-    # Verifica presenza dispositivi seriali
-    if ls /dev/ttyUSB* 2>/dev/null || ls /dev/ttyACM* 2>/dev/null; then
-        log_info "✓ Trovati dispositivi seriali:"
-        ls -la /dev/ttyUSB* 2>/dev/null || true
-        ls -la /dev/ttyACM* 2>/dev/null || true
+    # Test CRT-285
+    echo ""
+    log_info "1. Test CRT-285 Card Reader:"
+    if lsusb | grep -q "23d8:0285"; then
+        log_info "✓ CRT-285 rilevato via USB"
+        
+        # Test connessione con timeout per evitare hang
+        python3 - << 'EOF' 2>/dev/null || true
+import ctypes
+import signal
+import sys
+
+def timeout_handler(signum, frame):
+    print("   Timeout connessione (normale al primo avvio)")
+    sys.exit(1)
+
+signal.signal(signal.SIGALRM, timeout_handler)
+signal.alarm(3)
+
+try:
+    lib = ctypes.CDLL("/opt/access_control/src/drivers/288K/linux_crt_288x/drivers/x64/crt_288x_ur.so")
+    result = lib.CRT288x_OpenConnection(0, 0, 9600)
+    signal.alarm(0)
+    if result == 0:
+        print("   ✓ CRT-285 connesso correttamente")
+        lib.CRT288x_CloseConnection()
+    else:
+        print(f"   ⚠ CRT-285 codice ritorno: {result} (normale al primo avvio)")
+except Exception as e:
+    signal.alarm(0)
+    print(f"   ⚠ Test connessione: {e}")
+EOF
     else
-        log_warn "Nessun dispositivo seriale rilevato"
-        log_warn "Verificare che l'hardware sia collegato"
+        log_warn "✗ CRT-285 NON rilevato"
     fi
     
-    # Verifica symlink
-    if [ -L /dev/card_reader ]; then
-        log_info "✓ Symlink card_reader presente"
-    fi
-    
-    if [ -L /dev/relay_controller ]; then
-        log_info "✓ Symlink relay_controller presente"
+    # Test Relè
+    echo ""
+    log_info "2. Test USB-RLY08 Relay Controller:"
+    if ls /dev/ttyACM* 2>/dev/null; then
+        log_info "✓ Trovata porta ACM:"
+        ls -la /dev/ttyACM* 2>/dev/null
+        
+        # Test comunicazione base
+        python3 - << 'EOF' 2>/dev/null || true
+import serial
+import serial.tools.list_ports
+
+for port in serial.tools.list_ports.comports():
+    if "ACM" in port.device:
+        try:
+            ser = serial.Serial(port.device, 19200, timeout=0.5)
+            ser.write(b'\x5A')  # Get module ID
+            response = ser.read(1)
+            if response:
+                print(f"   ✓ Relè risponde su {port.device}")
+            else:
+                print(f"   ⚠ Nessuna risposta da {port.device} (verificare modello)")
+            ser.close()
+        except Exception as e:
+            print(f"   ⚠ Errore test {port.device}: {e}")
+EOF
+    else
+        log_warn "✗ Nessuna porta ACM trovata per relè"
     fi
 }
 
