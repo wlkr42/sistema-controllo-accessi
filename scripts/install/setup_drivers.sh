@@ -58,17 +58,24 @@ install_crt288k() {
     
     # Crea regole udev per lettore tessere CRT-285
     cat > /tmp/99-crt285.rules << 'EOF'
-# CRT-285 Card Reader - USB HID Direct Access
-# IMPORTANTE: Il CRT-285 usa comunicazione USB diretta, NON porta seriale
-SUBSYSTEM=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", MODE="0666"
-SUBSYSTEM=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", OWNER="root", GROUP="plugdev"
+# CRT-285/288K Smart Card Reader - Fix completo disconnessioni
+# Risolve: libusb_interrupt_transfer -1, libusb_detach_kernel_driver -99
 
-# CRITICO: Previeni binding automatico driver kernel che causa disconnessioni continue
-# Questo risolve il problema del dispositivo che si disconnette ogni 7 secondi
-SUBSYSTEM=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", RUN+="/bin/sh -c 'echo -n $kernel > /sys/bus/usb/drivers/usb/unbind'"
+# USB device rules - CREATOR(CHINA)TECH CRT-285
+SUBSYSTEM=="usb", ATTR{idVendor}=="23d8", ATTR{idProduct}=="0285", MODE="0666", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb_device", ATTR{idVendor}=="23d8", ATTR{idProduct}=="0285", MODE="0666", GROUP="plugdev"
 
-# Tag per accesso utente
-SUBSYSTEM=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", TAG+="uaccess"
+# HID raw device (if applicable)
+KERNEL=="hidraw*", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", MODE="0666", GROUP="plugdev", TAG+="uaccess"
+
+# CRITICO: Disabilita autosuspend per stabilità
+SUBSYSTEM=="usb", ATTR{idVendor}=="23d8", ATTR{idProduct}=="0285", ATTR{power/autosuspend}="-1"
+
+# Alternative rules per tutti i subsystems
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="23d8", ATTRS{idProduct}=="0285", MODE="0666", GROUP="plugdev"
+
+# SOLUZIONE PRINCIPALE: Unbind da driver HID che causa disconnessioni ogni 7 secondi
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="23d8", ATTR{idProduct}=="0285", RUN+="/bin/sh -c 'echo -n $kernel > /sys/bus/usb/drivers/usbhid/unbind || true'"
 EOF
     
     sudo mv /tmp/99-crt285.rules /etc/udev/rules.d/
@@ -79,6 +86,37 @@ EOF
         sudo chmod 755 "$DRIVERS_DIR/288K/linux_crt_288x/drivers/x64/crt_288x_ur.so"
         log_info "✓ Permessi libreria driver corretti"
     fi
+    
+    # Unbind immediato da HID driver se dispositivo già collegato
+    log_info "Unbind da driver HID se necessario..."
+    for SYSFS_DEV in /sys/bus/usb/devices/*; do
+        if [ -f "$SYSFS_DEV/idVendor" ] && [ -f "$SYSFS_DEV/idProduct" ]; then
+            VENDOR=$(cat "$SYSFS_DEV/idVendor" 2>/dev/null)
+            PRODUCT=$(cat "$SYSFS_DEV/idProduct" 2>/dev/null)
+            
+            if [ "$VENDOR" = "23d8" ] && [ "$PRODUCT" = "0285" ]; then
+                DEV_NAME=$(basename "$SYSFS_DEV")
+                
+                # Controlla se è bindato a usbhid
+                if [ -L "$SYSFS_DEV/driver" ]; then
+                    DRIVER=$(readlink "$SYSFS_DEV/driver" | xargs basename)
+                    if [ "$DRIVER" = "usbhid" ]; then
+                        echo "$DEV_NAME" | sudo tee /sys/bus/usb/drivers/usbhid/unbind > /dev/null 2>&1 || true
+                        log_info "✓ Driver HID unbindato per $DEV_NAME"
+                    fi
+                fi
+                
+                # Imposta permessi immediati sul device
+                BUS=$(echo $DEV_NAME | cut -d- -f1)
+                DEV=$(echo $DEV_NAME | cut -d- -f2 | cut -d. -f1)
+                DEVICE_PATH="/dev/bus/usb/$BUS/$DEV"
+                if [ -e "$DEVICE_PATH" ]; then
+                    sudo chmod 666 "$DEVICE_PATH"
+                    log_info "✓ Permessi impostati su $DEVICE_PATH"
+                fi
+            fi
+        fi
+    done
 }
 
 # Installa driver USB-RLY08
