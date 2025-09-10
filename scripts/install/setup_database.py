@@ -97,15 +97,16 @@ def ensure_all_tables(conn):
             CREATE TABLE IF NOT EXISTS utenti_autorizzati (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 codice_fiscale TEXT UNIQUE NOT NULL,
-                nome TEXT NOT NULL,
+                nome TEXT,
+                data_inserimento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                data_aggiornamento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                attivo BOOLEAN DEFAULT 1,
+                note TEXT,
+                creato_da TEXT,
+                modificato_da TEXT,
                 email TEXT,
                 telefono TEXT,
-                attivo BOOLEAN DEFAULT 1,
-                gruppi TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP,
-                created_by TEXT,
-                updated_by TEXT
+                gruppi TEXT
             )
         ''',
         'log_accessi': '''
@@ -158,6 +159,8 @@ def ensure_all_tables(conn):
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_tessere_codice ON tessere(codice_fiscale)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_accessi_timestamp ON accessi(timestamp)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_log_timestamp ON log_accessi(timestamp)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_cf ON utenti_autorizzati(codice_fiscale)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_cf_attivo ON utenti_autorizzati(codice_fiscale, attivo)')
     
     conn.commit()
     return tables_created
@@ -237,12 +240,11 @@ def create_database(db_path):
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS orari_accesso (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tessera_id INTEGER,
-        giorno_settimana INTEGER CHECK(giorno_settimana BETWEEN 0 AND 6),
-        ora_inizio TIME,
-        ora_fine TIME,
-        active BOOLEAN DEFAULT 1,
-        FOREIGN KEY (tessera_id) REFERENCES tessere(id)
+        giorno INTEGER DEFAULT 1,
+        ora_inizio TEXT,
+        ora_fine TEXT,
+        attivo BOOLEAN DEFAULT 1,
+        descrizione TEXT
     )
     ''')
     
