@@ -13,6 +13,18 @@ export HOME=${HOME:-/root}
 export USER=${USER:-root}
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
+# Determina l'utente che eseguirà il servizio
+# Usa l'utente che ha fatto sudo, altrimenti www-data
+if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+    SERVICE_USER="$SUDO_USER"
+else
+    SERVICE_USER="www-data"
+fi
+
+echo ""
+echo "ℹ️  Il servizio girerà come utente: $SERVICE_USER"
+echo ""
+
 # Colori per output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -341,13 +353,13 @@ mkdir -p "$INSTALL_DIR/src/api/static/avatars"
 
 # Assegna proprietario www-data per directory che richiedono scrittura
 log_info "Assegnazione proprietario www-data..."
-chown -R www-data:www-data "$INSTALL_DIR/data"
-chown -R www-data:www-data "$INSTALL_DIR/logs"
-chown -R www-data:www-data "$INSTALL_DIR/backups"
-chown -R www-data:www-data "$INSTALL_DIR/config"
-chown -R www-data:www-data "$INSTALL_DIR/uploads" 2>/dev/null || true
-chown -R www-data:www-data "$INSTALL_DIR/static" 2>/dev/null || true
-chown -R www-data:www-data "$INSTALL_DIR/src/api/static"
+chown -R $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/data"
+chown -R $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/logs"
+chown -R $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/backups"
+chown -R $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/config"
+chown -R $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/uploads" 2>/dev/null || true
+chown -R $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/static" 2>/dev/null || true
+chown -R $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/src/api/static"
 
 # Imposta permessi
 chmod 755 "$INSTALL_DIR/data"
@@ -360,9 +372,9 @@ chmod 755 "$INSTALL_DIR/src/api/static"
 
 # Aggiungi www-data ai gruppi hardware
 log_info "Aggiunta www-data ai gruppi hardware..."
-usermod -a -G dialout www-data 2>/dev/null || true
-usermod -a -G tty www-data 2>/dev/null || true
-usermod -a -G plugdev www-data 2>/dev/null || true
+usermod -a -G dialout $SERVICE_USER 2>/dev/null || true
+usermod -a -G tty $SERVICE_USER 2>/dev/null || true
+usermod -a -G plugdev $SERVICE_USER 2>/dev/null || true
 
 log_success "Struttura directory creata con permessi corretti"
 
@@ -383,7 +395,7 @@ echo ""
 # Assicura che la directory data esista
 # Assicura permessi corretti sul database dopo creazione
 if [ -f "$INSTALL_DIR/data/access.db" ]; then
-    chown www-data:www-data "$INSTALL_DIR/data/access.db"
+    chown $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/data/access.db"
     chmod 664 "$INSTALL_DIR/data/access.db"
     log_info "Permessi database applicati"
 fi
@@ -632,13 +644,13 @@ cat > "$INSTALL_DIR/config/device_assignments.json" << 'EOF'
 EOF
 
 # Assegna permessi al file di configurazione
-chown www-data:www-data "$INSTALL_DIR/config/device_assignments.json"
+chown $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/config/device_assignments.json"
 chmod 664 "$INSTALL_DIR/config/device_assignments.json"
 
 # Crea altri file di configurazione vuoti se non esistono
 touch "$INSTALL_DIR/config/odoo_sync.json" 2>/dev/null || true
 touch "$INSTALL_DIR/config/system_settings.json" 2>/dev/null || true
-chown www-data:www-data "$INSTALL_DIR/config/"*.json 2>/dev/null || true
+chown $SERVICE_USER:$SERVICE_USER "$INSTALL_DIR/config/"*.json 2>/dev/null || true
 chmod 664 "$INSTALL_DIR/config/"*.json 2>/dev/null || true
 
 log_success "Configurazione file creata con permessi corretti"

@@ -11,6 +11,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="/opt/access_control"
 FLASK_ENV="${1:-development}"
 
+# Usa SERVICE_USER passato da install_system.sh o determina automaticamente
+if [ -z "$SERVICE_USER" ]; then
+    if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+        SERVICE_USER="$SUDO_USER"
+    else
+        SERVICE_USER="www-data"
+    fi
+fi
+
+echo "ℹ️  Configurazione servizi per utente: $SERVICE_USER"
+
 # Colori output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -35,8 +46,8 @@ Documentation=file://$PROJECT_ROOT/docs/DOCUMENTAZIONE_SISTEMA.md
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
+User=$SERVICE_USER
+Group=$SERVICE_USER
 WorkingDirectory=$PROJECT_ROOT
 Environment="PYTHONPATH=$PROJECT_ROOT"
 Environment="PYTHONUNBUFFERED=1"
@@ -114,8 +125,8 @@ Documentation=file://$PROJECT_ROOT/docs/DOCUMENTAZIONE_SISTEMA.md
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
+User=$SERVICE_USER
+Group=$SERVICE_USER
 WorkingDirectory=$PROJECT_ROOT
 ExecStart=/bin/bash $PROJECT_ROOT/scripts/system/monitor_24_7.sh
 Restart=always
