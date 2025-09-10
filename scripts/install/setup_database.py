@@ -123,14 +123,14 @@ def ensure_all_tables(conn):
         ''',
         'relay_config': '''
             CREATE TABLE IF NOT EXISTS relay_config (
-                relay_id INTEGER PRIMARY KEY,
-                nome TEXT,
-                descrizione TEXT,
-                azione_accesso_valido TEXT DEFAULT 'pulse',
-                durata_impulso_valido INTEGER DEFAULT 3,
-                azione_accesso_invalido TEXT DEFAULT 'off',
-                durata_impulso_invalido INTEGER DEFAULT 0,
-                attivo BOOLEAN DEFAULT 1
+                relay_number INTEGER PRIMARY KEY CHECK (relay_number BETWEEN 1 AND 8),
+                description TEXT NOT NULL,
+                valid_action TEXT CHECK (valid_action IN ('OFF', 'ON', 'PULSE')),
+                valid_duration REAL DEFAULT 0,
+                invalid_action TEXT CHECK (invalid_action IN ('OFF', 'ON', 'PULSE')),
+                invalid_duration REAL DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_by TEXT
             )
         ''',
         'eventi_sistema': '''
@@ -374,14 +374,14 @@ def create_database(db_path):
     # Tabella relay_config
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS relay_config (
-        relay_id INTEGER PRIMARY KEY,
-        nome TEXT,
-        descrizione TEXT,
-        azione_accesso_valido TEXT DEFAULT 'pulse',
-        durata_impulso_valido INTEGER DEFAULT 3,
-        azione_accesso_invalido TEXT DEFAULT 'off',
-        durata_impulso_invalido INTEGER DEFAULT 0,
-        attivo BOOLEAN DEFAULT 1
+        relay_number INTEGER PRIMARY KEY CHECK (relay_number BETWEEN 1 AND 8),
+        description TEXT NOT NULL,
+        valid_action TEXT CHECK (valid_action IN ('OFF', 'ON', 'PULSE')),
+        valid_duration REAL DEFAULT 0,
+        invalid_action TEXT CHECK (invalid_action IN ('OFF', 'ON', 'PULSE')),
+        invalid_duration REAL DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_by TEXT
     )
     ''')
     
@@ -482,22 +482,23 @@ def create_database(db_path):
     ''', ('Varco Principale', 'Ingresso principale', 'bidirezionale', 1, 1, 3))
     
     # Configurazione relè (8 canali)
-    for i in range(1, 9):
-        cursor.execute('''
-        INSERT OR IGNORE INTO relay_config (relay_id, nome, descrizione, attivo)
-        VALUES (?, ?, ?, ?)
-        ''', (i, f'Relè {i}', f'Canale relè {i}', 1 if i == 1 else 0))
+    default_relay_configs = [
+        (1, 'Cancello Principale', 'PULSE', 5, 'OFF', 0),
+        (2, 'Relè 2', 'OFF', 0, 'OFF', 0),
+        (3, 'Relè 3', 'OFF', 0, 'OFF', 0),
+        (4, 'Relè 4', 'OFF', 0, 'OFF', 0),
+        (5, 'Relè 5', 'OFF', 0, 'OFF', 0),
+        (6, 'Relè 6', 'OFF', 0, 'OFF', 0),
+        (7, 'Relè 7', 'OFF', 0, 'OFF', 0),
+        (8, 'Relè 8', 'OFF', 0, 'OFF', 0)
+    ]
     
-    # Relè 1 per cancello principale
-    cursor.execute('''
-    UPDATE relay_config 
-    SET nome = 'Cancello Ingresso',
-        descrizione = 'Controllo cancello principale',
-        azione_accesso_valido = 'pulse',
-        durata_impulso_valido = 5,
-        attivo = 1
-    WHERE relay_id = 1
-    ''')
+    for relay_num, desc, valid_act, valid_dur, invalid_act, invalid_dur in default_relay_configs:
+        cursor.execute('''
+        INSERT OR IGNORE INTO relay_config 
+        (relay_number, description, valid_action, valid_duration, invalid_action, invalid_duration)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ''', (relay_num, desc, valid_act, valid_dur, invalid_act, invalid_dur))
     
     # Fasce orarie default (Lun-Ven 8:00-18:00, Sab 8:00-13:00)
     fasce_default = [
@@ -602,11 +603,23 @@ def verify_and_fix_database(db_path):
         
         if relay_count == 0:
             print("⚠️ Configurazione relè mancante, inserisco default...")
-            for i in range(1, 9):
+            default_relay_configs = [
+                (1, 'Cancello Principale', 'PULSE', 5, 'OFF', 0),
+                (2, 'Relè 2', 'OFF', 0, 'OFF', 0),
+                (3, 'Relè 3', 'OFF', 0, 'OFF', 0),
+                (4, 'Relè 4', 'OFF', 0, 'OFF', 0),
+                (5, 'Relè 5', 'OFF', 0, 'OFF', 0),
+                (6, 'Relè 6', 'OFF', 0, 'OFF', 0),
+                (7, 'Relè 7', 'OFF', 0, 'OFF', 0),
+                (8, 'Relè 8', 'OFF', 0, 'OFF', 0)
+            ]
+            
+            for relay_num, desc, valid_act, valid_dur, invalid_act, invalid_dur in default_relay_configs:
                 cursor.execute('''
-                INSERT OR IGNORE INTO relay_config (relay_id, nome, descrizione, attivo)
-                VALUES (?, ?, ?, ?)
-                ''', (i, f'Relè {i}', f'Canale relè {i}', 1 if i == 1 else 0))
+                INSERT OR IGNORE INTO relay_config 
+                (relay_number, description, valid_action, valid_duration, invalid_action, invalid_duration)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ''', (relay_num, desc, valid_act, valid_dur, invalid_act, invalid_dur))
             
             conn.commit()
             print("  ✅ Configurazione relè inserita")

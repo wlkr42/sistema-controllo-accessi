@@ -329,18 +329,42 @@ echo "==========================================================================
 echo ""
 
 log_info "Creazione directory necessarie..."
+# Crea TUTTE le directory necessarie
 mkdir -p "$INSTALL_DIR/data"
 mkdir -p "$INSTALL_DIR/logs"
 mkdir -p "$INSTALL_DIR/backups"
 mkdir -p "$INSTALL_DIR/config"
+mkdir -p "$INSTALL_DIR/uploads"
+mkdir -p "$INSTALL_DIR/static"
+mkdir -p "$INSTALL_DIR/src/api/static"
 mkdir -p "$INSTALL_DIR/src/api/static/avatars"
 
-# Permessi base
+# Assegna proprietario www-data per directory che richiedono scrittura
+log_info "Assegnazione proprietario www-data..."
+chown -R www-data:www-data "$INSTALL_DIR/data"
+chown -R www-data:www-data "$INSTALL_DIR/logs"
+chown -R www-data:www-data "$INSTALL_DIR/backups"
+chown -R www-data:www-data "$INSTALL_DIR/config"
+chown -R www-data:www-data "$INSTALL_DIR/uploads" 2>/dev/null || true
+chown -R www-data:www-data "$INSTALL_DIR/static" 2>/dev/null || true
+chown -R www-data:www-data "$INSTALL_DIR/src/api/static"
+
+# Imposta permessi
 chmod 755 "$INSTALL_DIR/data"
 chmod 755 "$INSTALL_DIR/logs"
 chmod 755 "$INSTALL_DIR/backups"
+chmod 755 "$INSTALL_DIR/config"
+chmod 755 "$INSTALL_DIR/uploads" 2>/dev/null || true
+chmod 755 "$INSTALL_DIR/static" 2>/dev/null || true
+chmod 755 "$INSTALL_DIR/src/api/static"
 
-log_success "Struttura directory creata"
+# Aggiungi www-data ai gruppi hardware
+log_info "Aggiunta www-data ai gruppi hardware..."
+usermod -a -G dialout www-data 2>/dev/null || true
+usermod -a -G tty www-data 2>/dev/null || true
+usermod -a -G plugdev www-data 2>/dev/null || true
+
+log_success "Struttura directory creata con permessi corretti"
 
 # Setup completo permessi
 log_info "Configurazione permessi completa..."
@@ -357,8 +381,12 @@ echo "==========================================================================
 echo ""
 
 # Assicura che la directory data esista
-mkdir -p "$INSTALL_DIR/data"
-chmod 755 "$INSTALL_DIR/data"
+# Assicura permessi corretti sul database dopo creazione
+if [ -f "$INSTALL_DIR/data/access.db" ]; then
+    chown www-data:www-data "$INSTALL_DIR/data/access.db"
+    chmod 664 "$INSTALL_DIR/data/access.db"
+    log_info "Permessi database applicati"
+fi
 
 log_info "Inizializzazione database..."
 if [ -f "$SCRIPT_DIR/setup_database.py" ]; then
@@ -603,7 +631,17 @@ cat > "$INSTALL_DIR/config/device_assignments.json" << 'EOF'
 }
 EOF
 
-log_success "Configurazione file creata"
+# Assegna permessi al file di configurazione
+chown www-data:www-data "$INSTALL_DIR/config/device_assignments.json"
+chmod 664 "$INSTALL_DIR/config/device_assignments.json"
+
+# Crea altri file di configurazione vuoti se non esistono
+touch "$INSTALL_DIR/config/odoo_sync.json" 2>/dev/null || true
+touch "$INSTALL_DIR/config/system_settings.json" 2>/dev/null || true
+chown www-data:www-data "$INSTALL_DIR/config/"*.json 2>/dev/null || true
+chmod 664 "$INSTALL_DIR/config/"*.json 2>/dev/null || true
+
+log_success "Configurazione file creata con permessi corretti"
 
 # 9. INSTALLAZIONE SERVIZI E CONFIGURAZIONI
 echo "============================================================================"
